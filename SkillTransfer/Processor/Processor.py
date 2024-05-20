@@ -1,9 +1,3 @@
-# -----------------------------------------------------------------------
-# Author:   Takayoshi Hagiwara (KMD)
-# Created:  2021/8/19
-# Summary:  Robot arm motion control manager
-# -----------------------------------------------------------------------
-
 import datetime
 import pprint
 import threading
