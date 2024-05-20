@@ -63,6 +63,7 @@ class ProcessorClass:
         bendingSensorCom5 = [addr for addr in dat if "bendingSensorCom5" in addr[0]][0][1]
         bendingSensorCom6 = [addr for addr in dat if "bendingSensorCom6" in addr[0]][0][1]
 
+        isExportData =  [addr for addr in dat if "isExportData" in addr[0]][0][1]
         dirPath = [addr for addr in dat if "dirPath" in addr[0]][0][1]
 
         participantNum = [addr for addr in dat if "participantNum" in addr[0]][0][1]
@@ -91,6 +92,7 @@ class ProcessorClass:
         self.bendingSensorPorts = [int(bendingSensorPortParticipant1), int(bendingSensorPortParticipant2), int(bendingSensorPortParticipant3), int(bendingSensorPortParticipant4), int(bendingSensorPortParticipant5), int(bendingSensorPortParticipant6)]
         self.bendingSensorComs = [bendingSensorCom1, bendingSensorCom2, bendingSensorCom3, bendingSensorCom4, bendingSensorCom5, bendingSensorCom6]
 
+        self.isExportData = isExportData
         self.dirPath = dirPath
 
         self.participantNum = participantNum
@@ -108,7 +110,7 @@ class ProcessorClass:
         self.condition = "1"
         self.number = "1"
 
-    def mainloop(self, isFixedFrameRate: bool = False, isChangeOSTimer: bool = False, isExportData: bool = True, isEnablexArm: bool = True):
+    def mainloop(self, isFixedFrameRate: bool = False, isChangeOSTimer: bool = False, isExportData: bool = False, isEnablexArm: bool = True):
         """
         Send the position and rotation to the xArm
         """
@@ -178,7 +180,7 @@ class ProcessorClass:
                         code_2, ret_2 = arm_2.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue2"]))
 
                     # ----- Data recording ----- #
-                    if isExportData:
+                    if self.isExportData:
                         dataRecordManager.Record(relativePosition, relativeRotation, weightList, dictGripperValue_P, robotpos, robotrot, dictGripperValue_R, time.perf_counter() - taskStartTime)
 
                     # ----- If xArm error has occured ----- #
@@ -258,7 +260,7 @@ class ProcessorClass:
             self.taskTime.append(time.perf_counter() - taskStartTime)
             self.PrintProcessInfo()
 
-            if isExportData:
+            if self.isExportData:
                 dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
 
             # ----- Disconnect ----- #

@@ -26,6 +26,7 @@ bendingSensorCom4,COM17
 bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
+isExportData,False
 dirPath,C:/Users/SANOLAB/Desktop/tsugumi/expertdata/tsugumi/21回目
 
 participantNum,
