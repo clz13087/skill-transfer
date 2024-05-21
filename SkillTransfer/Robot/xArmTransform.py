@@ -95,3 +95,63 @@ class xArmTransform:
                 yaw = self.__minYaw
 
         return np.array([x, y, z, roll, pitch, yaw])
+
+    def Transform_LPF(self, relativepos: list, relativerot: list, isLimit=True, isOnlyPosition=False):
+        """
+        Converts from motive coordinate to xarm coordinate and limits values.
+        """
+        relativepos_mm = relativepos * 1000
+
+        self.beforefilt.append([self.__initX, self.__initY, self.__initZ, self.__initRoll, self.__initPitch, self.__initYaw])
+        self.robotfilt = self.filter_robot.lowpass2(self.beforefilt, self.afterfilt)
+        self.afterfilt.append(self.robotfilt)
+        del self.beforefilt[0]
+        del self.afterfilt[0]
+
+        if self.mount == "left":
+            x, y, z = self.robotfilt[2] + self.__initX, -1 * self.robotfilt[1] + self.__initY, self.robotfilt[0] + self.__initZ
+            roll, pitch, yaw = self.robotfilt[5] + self.__initRoll, -1 * self.robotfilt[4] + self.__initPitch, self.robotfilt[3] + self.__initYaw
+
+        elif self.mount == "right":
+            x, y, z = self.robotfilt[2] + self.__initX, self.robotfilt[1] + self.__initY, -1 * self.robotfilt[0] + self.__initZ
+            roll, pitch, yaw = self.robotfilt[5] + self.__initRoll, self.robotfilt[4] + self.__initPitch, -1 * self.robotfilt[3] + self.__initYaw
+
+        elif self.mount == "flat":
+            x, y, z = self.robotfilt[2] + self.__initX, self.robotfilt[0] + self.__initY, self.robotfilt[1] + self.__initZ
+            roll, pitch, yaw = self.robotfilt[5] + self.__initRoll, self.robotfilt[3] + self.__initPitch, self.robotfilt[4] + self.__initYaw
+
+        if isOnlyPosition:
+            roll, pitch, yaw = self.__initRoll, self.__initPitch, self.__initYaw
+
+        if isLimit:
+            if x > self.__maxX:
+                x = self.__maxX
+            elif x < self.__minX:
+                x = self.__minX
+
+            if y > self.__maxY:
+                y = self.__maxY
+            elif y < self.__minY:
+                y = self.__minY
+
+            if z > self.__maxZ:
+                z = self.__maxZ
+            elif z < self.__minZ:
+                z = self.__minZ
+
+            if roll > self.__maxRoll:
+                roll = self.__maxRoll
+            elif roll < self.__minRoll:
+                roll = self.__minRoll
+
+            if pitch > self.__maxPitch:
+                pitch = self.__maxPitch
+            elif pitch < self.__minPitch:
+                pitch = self.__minPitch
+
+            if yaw > self.__maxYaw:
+                yaw = self.__maxYaw
+            elif yaw < self.__minYaw:
+                yaw = self.__minYaw
+
+        return np.array([x, y, z, roll, pitch, yaw])
