@@ -102,7 +102,7 @@ class xArmTransform:
         """
         relativepos_mm = relativepos * 1000
 
-        self.beforefilt.append([self.x, self.y, self.z, self.roll, self.pitch, self.yaw])
+        self.beforefilt.append([relativepos_mm[0], relativepos_mm[1], relativepos_mm[2], relativerot[0], relativerot[1], relativerot[2]])
         self.robotfilt = self.filter_robot.lowpass2(self.beforefilt, self.afterfilt)
         self.afterfilt.append(self.robotfilt)
         del self.beforefilt[0]
