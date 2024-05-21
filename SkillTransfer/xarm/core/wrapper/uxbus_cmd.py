@@ -26,7 +26,7 @@ class UxbusCmd(object):
     BAUDRATES = (4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600,
                  1000000, 1500000, 2000000, 2500000)
 
-    def __init__(self):
+    def __init__(self, set_feedback_key_tranid=None):
         self._has_error = False
         self._has_warn = False
         self._state_is_ready = False
@@ -35,10 +35,12 @@ class UxbusCmd(object):
         self._cmd_num = 0
         self._debug = False
         self.lock = threading.Lock()
-        self._GET_TIMEOUT = XCONF.UxbusConf.GET_TIMEOUT / 1000
-        self._SET_TIMEOUT = XCONF.UxbusConf.SET_TIMEOUT / 1000
-        self._last_comm_time = time.time()
-        self._last_modbus_comm_time = time.time()
+        self._G_TOUT = XCONF.UxbusConf.GET_TIMEOUT / 1000
+        self._S_TOUT = XCONF.UxbusConf.SET_TIMEOUT / 1000
+        self._last_comm_time = time.monotonic()
+        self._last_modbus_comm_time = time.monotonic()
+        self._feedback_type = 0
+        self._set_feedback_key_tranid = set_feedback_key_tranid
 
     @property
     def last_comm_time(self):
@@ -47,107 +49,147 @@ class UxbusCmd(object):
     @property
     def state_is_ready(self):
         return self._state_is_ready
+    
+    def _get_trans_id(self):
+        return 0
 
     def set_timeout(self, timeout):
         try:
             if isinstance(timeout, (tuple, list)):
                 if len(timeout) >= 2:
-                    self._SET_TIMEOUT = timeout[0] if timeout[0] > 0 else self._SET_TIMEOUT
-                    self._GET_TIMEOUT = timeout[1] if timeout[1] > 0 else self._GET_TIMEOUT
+                    self._S_TOUT = timeout[0] if timeout[0] > 0 else self._S_TOUT
+                    self._G_TOUT = timeout[1] if timeout[1] > 0 else self._G_TOUT
                 elif len(timeout) == 1:
-                    self._SET_TIMEOUT = timeout[0] if timeout[0] > 0 else self._SET_TIMEOUT
-                    self._GET_TIMEOUT = timeout[0] if timeout[0] > 0 else self._GET_TIMEOUT
+                    self._S_TOUT = timeout[0] if timeout[0] > 0 else self._S_TOUT
+                    self._G_TOUT = timeout[0] if timeout[0] > 0 else self._G_TOUT
             elif isinstance(timeout, (int, float)):
-                self._SET_TIMEOUT = timeout if timeout > 0 else self._SET_TIMEOUT
-                self._GET_TIMEOUT = timeout if timeout > 0 else self._GET_TIMEOUT
+                self._S_TOUT = timeout if timeout > 0 else self._S_TOUT
+                self._G_TOUT = timeout if timeout > 0 else self._G_TOUT
         except:
             pass
-        return [self._SET_TIMEOUT, self._GET_TIMEOUT] if self._SET_TIMEOUT != self._GET_TIMEOUT else self._SET_TIMEOUT
+        return [self._S_TOUT, self._G_TOUT] if self._S_TOUT != self._G_TOUT else self._S_TOUT
 
     def set_debug(self, debug):
         self._debug = debug
-
-    def check_xbus_prot(self, data, funcode):
+    
+    def send_modbus_request(self, unit_id, pdu_data, pdu_len, prot_id=-1, t_id=None):
         raise NotImplementedError
-
-    def send_pend(self, funcode, num, timeout):
-        raise NotImplementedError
-
-    def send_xbus(self, funcode, txdata, num):
+    
+    def recv_modbus_response(self, t_unit_id, t_trans_id, num, timeout, t_prot_id=-1, ret_raw=False):
         raise NotImplementedError
 
     @lock_require
-    def set_nu8(self, funcode, datas, num, timeout=None):
-        ret = self.send_xbus(funcode, datas, num)
-        if ret != 0:
+    def set_nu8(self, funcode, datas, num, timeout=None, feedback_key=None, feedback_type=XCONF.FeedbackType.MOTION_FINISH):
+        need_set_fb = feedback_type != 0 and (self._feedback_type & feedback_type) != feedback_type
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type | feedback_type)
+
+        trans_id = self._get_trans_id()
+        if feedback_key and self._set_feedback_key_tranid:
+            self._set_feedback_key_tranid(feedback_key, trans_id, self._feedback_type)
+        ret = self.send_modbus_request(funcode, datas, num)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(funcode, 0, self._SET_TIMEOUT if timeout is None else timeout)
+        ret = self.recv_modbus_response(funcode, ret, 0, self._S_TOUT if timeout is None else timeout)
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type)
+        return ret
 
     @lock_require
     def getset_nu8(self, funcode, datas, num_send, num_get):
-        ret = self.send_xbus(funcode, datas, num_send)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, datas, num_send)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(funcode, num_get, self._SET_TIMEOUT)
+        return self.recv_modbus_response(funcode, ret, num_get, self._S_TOUT)
 
     @lock_require
     def get_nu8(self, funcode, num):
-        ret = self.send_xbus(funcode, 0, 0)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, 0, 0)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (num + 1)
-        return self.send_pend(funcode, num, self._GET_TIMEOUT)
+        return self.recv_modbus_response(funcode, ret, num, self._G_TOUT)
 
     @lock_require
     def set_nu16(self, funcode, datas, num):
         hexdata = convert.u16s_to_bytes(datas, num)
-        ret = self.send_xbus(funcode, hexdata, num * 2)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, num * 2)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        ret = self.send_pend(funcode, 0, self._SET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, 0, self._S_TOUT)
         return ret
 
     @lock_require
     def get_nu16(self, funcode, num):
-        ret = self.send_xbus(funcode, 0, 0)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, 0, 0)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (num * 2 + 1)
-        ret = self.send_pend(funcode, num * 2, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, num * 2, self._G_TOUT)
         data = [0] * (1 + num)
         data[0] = ret[0]
         data[1:num] = convert.bytes_to_u16s(ret[1:num * 2 + 1], num)
         return data
 
     @lock_require
-    def set_nfp32(self, funcode, datas, num):
+    def set_nfp32(self, funcode, datas, num, feedback_key=None, feedback_type=XCONF.FeedbackType.MOTION_FINISH):
+        need_set_fb = feedback_type != 0 and (self._feedback_type & feedback_type) != feedback_type
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type | feedback_type)
+
+        trans_id = self._get_trans_id()
+        if feedback_key and self._set_feedback_key_tranid:
+            self._set_feedback_key_tranid(feedback_key, trans_id, self._feedback_type)
         hexdata = convert.fp32s_to_bytes(datas, num)
-        ret = self.send_xbus(funcode, hexdata, num * 4)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, num * 4)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(funcode, 0, self._SET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, 0, self._S_TOUT)
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type)
+        return ret
 
     @lock_require
-    def set_nfp32_with_bytes(self, funcode, datas, num, additional_bytes, rx_len=0):
+    def set_nfp32_with_bytes(self, funcode, datas, num, additional_bytes, rx_len=0, timeout=None, feedback_key=None, feedback_type=XCONF.FeedbackType.MOTION_FINISH):
+        need_set_fb = feedback_type != 0 and (self._feedback_type & feedback_type) != feedback_type
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type | feedback_type)
+
+        trans_id = self._get_trans_id()
+        if feedback_key and self._set_feedback_key_tranid:
+            self._set_feedback_key_tranid(feedback_key, trans_id, self._feedback_type)
         hexdata = convert.fp32s_to_bytes(datas, num)
         hexdata += additional_bytes
-        ret = self.send_xbus(funcode, hexdata, num * 4 + len(additional_bytes))
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, num * 4 + len(additional_bytes))
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(funcode, rx_len, self._SET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, rx_len, self._S_TOUT if timeout is None else timeout)
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type)
+        return ret
 
     @lock_require
-    def set_nint32(self, funcode, datas, num):
+    def set_nint32(self, funcode, datas, num, feedback_key=None, feedback_type=XCONF.FeedbackType.MOTION_FINISH):
+        need_set_fb = feedback_type != 0 and (self._feedback_type & feedback_type) != feedback_type
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type | feedback_type)
+
+        trans_id = self._get_trans_id()
+        if feedback_key and self._set_feedback_key_tranid:
+            self._set_feedback_key_tranid(feedback_key, trans_id, self._feedback_type)
         hexdata = convert.int32s_to_bytes(datas, num)
-        ret = self.send_xbus(funcode, hexdata, num * 4)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, num * 4)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(funcode, 0, self._SET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, 0, self._S_TOUT)
+        if feedback_key and need_set_fb:
+            self._set_feedback_type_no_lock(self._feedback_type)
+        return ret
 
     @lock_require
     def get_nfp32(self, funcode, num, timeout=None):
-        ret = self.send_xbus(funcode, 0, 0)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, 0, 0)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (num * 4 + 1)
-        ret = self.send_pend(funcode, num * 4, timeout if timeout is not None else self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, num * 4, timeout if timeout is not None else self._G_TOUT)
         data = [0] * (1 + num)
         data[0] = ret[0]
         data[1:num+1] = convert.bytes_to_fp32s(ret[1:num * 4 + 1], num)
@@ -155,10 +197,10 @@ class UxbusCmd(object):
 
     @lock_require
     def get_nfp32_with_datas(self, funcode, datas, num_send, num_get, timeout=None):
-        ret = self.send_xbus(funcode, datas, num_send)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, datas, num_send)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        ret = self.send_pend(funcode, num_get * 4, timeout if timeout is not None else self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, num_get * 4, timeout if timeout is not None else self._G_TOUT)
         data = [0] * (1 + num_get)
         data[0] = ret[0]
         data[1:num_get + 1] = convert.bytes_to_fp32s(ret[1:num_get * 4 + 1], num_get)
@@ -167,10 +209,10 @@ class UxbusCmd(object):
     @lock_require
     def swop_nfp32(self, funcode, datas, txn, rxn):
         hexdata = convert.fp32s_to_bytes(datas, txn)
-        ret = self.send_xbus(funcode, hexdata, txn * 4)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, txn * 4)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (rxn + 1)
-        ret = self.send_pend(funcode, rxn * 4, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, rxn * 4, self._G_TOUT)
         data = [0] * (1 + rxn)
         data[0] = ret[0]
         data[1:rxn+1] = convert.bytes_to_fp32s(ret[1:rxn * 4 + 1], rxn)
@@ -179,10 +221,10 @@ class UxbusCmd(object):
     @lock_require
     def is_nfp32(self, funcode, datas, txn):
         hexdata = convert.fp32s_to_bytes(datas, txn)
-        ret = self.send_xbus(funcode, hexdata, txn * 4)
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, txn * 4)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * 2
-        return self.send_pend(funcode, 1, self._GET_TIMEOUT)
+        return self.recv_modbus_response(funcode, ret, 1, self._G_TOUT)
 
     def get_version(self):
         return self.get_nu8(XCONF.UxbusReg.GET_VERSION, 40)
@@ -194,23 +236,23 @@ class UxbusCmd(object):
         # txdata = signature, 175: signature length if use 14-character SN for plain text, do not miss '\n's
         return self.get_nu8(XCONF.UxbusReg.CHECK_VERIFY, 1)
 
-    def shutdown_system(self, value):
+    def system_control(self, value):
         txdata = [value]
-        return self.set_nu8(XCONF.UxbusReg.SHUTDOWN_SYSTEM, txdata, 1)
+        return self.set_nu8(XCONF.UxbusReg.SYSTEM_CONTROL, txdata, 1)
 
     def set_record_traj(self, value):
         txdata = [value]
         return self.set_nu8(XCONF.UxbusReg.SET_TRAJ_RECORD, txdata, 1)
 
-    def playback_traj(self, value, spdx=1):
+    def playback_traj(self, value, spdx=1, feedback_key=None):
         txdata = [value, spdx]
-        return self.set_nint32(XCONF.UxbusReg.PLAY_TRAJ, txdata, 2)
+        return self.set_nint32(XCONF.UxbusReg.PLAY_TRAJ, txdata, 2, feedback_key=feedback_key, feedback_type=XCONF.FeedbackType.OTHER_FINISH)
 
     def playback_traj_old(self, value):
         txdata = [value]
         return self.set_nint32(XCONF.UxbusReg.PLAY_TRAJ, txdata, 1)
 
-    def save_traj(self, filename, wait_time=2):
+    def save_traj(self, filename, wait_time=2, feedback_key=None):
         char_list = list(filename)
         txdata = [ord(i) for i in char_list]
         name_len = len(txdata)
@@ -219,11 +261,11 @@ class UxbusCmd(object):
             return [XCONF.UxbusState.ERR_PARAM]
         txdata = txdata + [0] * (81 - name_len)
 
-        ret = self.set_nu8(XCONF.UxbusReg.SAVE_TRAJ, txdata, 81)
+        ret = self.set_nu8(XCONF.UxbusReg.SAVE_TRAJ, txdata, 81, feedback_key=feedback_key, feedback_type=XCONF.FeedbackType.OTHER_FINISH)
         time.sleep(wait_time)  # Must! or buffer would be flushed if set mode to pos_mode
         return ret
 
-    def load_traj(self, filename, wait_time=2):
+    def load_traj(self, filename, wait_time=2, feedback_key=None):
         char_list = list(filename)
         txdata = [ord(i) for i in char_list]
         name_len = len(txdata)
@@ -232,8 +274,9 @@ class UxbusCmd(object):
             return [XCONF.UxbusState.ERR_PARAM]
         txdata = txdata + [0] * (81 - name_len)
 
-        ret = self.set_nu8(XCONF.UxbusReg.LOAD_TRAJ, txdata, 81)
-        time.sleep(wait_time)  # Must! or buffer would be flushed if set mode to pos_mode
+        ret = self.set_nu8(XCONF.UxbusReg.LOAD_TRAJ, txdata, 81, feedback_key=feedback_key, feedback_type=XCONF.FeedbackType.OTHER_FINISH)
+        if wait_time > 0:
+            time.sleep(wait_time)  # Must! or buffer would be flushed if set mode to pos_mode
         return ret
 
     def get_traj_rw_status(self):
@@ -299,7 +342,7 @@ class UxbusCmd(object):
 
     def motion_en(self, axis_id, enable):
         txdata = [axis_id, int(enable)]
-        return self.set_nu8(XCONF.UxbusReg.MOTION_EN, txdata, 2, timeout=self._SET_TIMEOUT if self._SET_TIMEOUT >= 2 else 2)
+        return self.set_nu8(XCONF.UxbusReg.MOTION_EN, txdata, 2, timeout=self._S_TOUT if self._S_TOUT >= 5 else 5)
 
     def set_state(self, value):
         txdata = [value]
@@ -330,9 +373,13 @@ class UxbusCmd(object):
         txdata = [axis_id, int(enable)]
         return self.set_nu8(XCONF.UxbusReg.SET_BRAKE, txdata, 2)
 
-    def set_mode(self, mode):
-        txdata = [mode]
-        return self.set_nu8(XCONF.UxbusReg.SET_MODE, txdata, 1)
+    def set_mode(self, mode, detection_param=-1):
+        if detection_param >= 0:
+            txdata = [mode, detection_param]
+            return self.set_nu8(XCONF.UxbusReg.SET_MODE, txdata, 2)
+        else:
+            txdata = [mode]
+            return self.set_nu8(XCONF.UxbusReg.SET_MODE, txdata, 1)
 
     def set_report_tau_or_i(self, tau_or_i):  # 0 for tau(default), 1 for i
         txdata = [tau_or_i]
@@ -341,22 +388,66 @@ class UxbusCmd(object):
     def get_report_tau_or_i(self):
         return self.get_nu8(XCONF.UxbusReg.GET_REPORT_TAU_OR_I, 1)
 
-    def move_line(self, mvpose, mvvelo, mvacc, mvtime):
+    def set_cartesian_velo_continuous(self, on_off):  # False for not continuous, True for continuous
+        txdata = [int(on_off)]
+        return self.set_nu8(XCONF.UxbusReg.SET_CARTV_CONTINUE, txdata, 1)
+
+    def set_allow_approx_motion(self, on_off):
+        txdata = [int(on_off)]
+        return self.set_nu8(XCONF.UxbusReg.SET_ALLOW_APPROX_MOTION, txdata, 1)
+
+    def get_allow_approx_motion(self):
+        return self.get_nu8(XCONF.UxbusReg.GET_ALLOW_APPROX_MOTION, 1)
+
+    def move_line(self, mvpose, mvvelo, mvacc, mvtime, only_check_type=0, motion_type=0):
         txdata = [mvpose[i] for i in range(6)]
         txdata += [mvvelo, mvacc, mvtime]
-        return self.set_nfp32(XCONF.UxbusReg.MOVE_LINE, txdata, 9)
+        if only_check_type <= 0 and motion_type == 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_LINE, txdata, 9)
+        else:
+            byte_data = bytes([only_check_type]) if motion_type == 0 else bytes([only_check_type, int(motion_type)])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINE, txdata, 9, byte_data, 3, timeout=10)
 
-    def move_line_aa(self, mvpose, mvvelo, mvacc, mvtime, mvcoord, relative):
+    def move_line_common(self, mvpose, mvvelo, mvacc, mvtime, radius=-1, coord=0, is_axis_angle=False, only_check_type=0, motion_type=0, feedback_key=None):
+        """
+        通用指令, 固件1.10.0开始支持 
+        """
+        txdata = [mvpose[i] for i in range(6)]
+        _radius = -1 if radius is None else radius
+        txdata += [mvvelo, mvacc, mvtime, _radius]
+        if motion_type == 0:
+            byte_data = bytes([coord, int(is_axis_angle), only_check_type])
+        else:
+            byte_data = bytes([coord, int(is_axis_angle), only_check_type, int(motion_type)])
+        return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINE, txdata, 10, byte_data, 3, timeout=10, feedback_key=feedback_key)
+
+    def move_line_aa(self, mvpose, mvvelo, mvacc, mvtime, mvcoord, relative, only_check_type=0, motion_type=0):
         float_data = [mvpose[i] for i in range(6)]
         float_data += [mvvelo, mvacc, mvtime]
         byte_data = bytes([mvcoord, relative])
-        return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINE_AA, float_data, 9, byte_data)
+        if only_check_type <= 0 and motion_type == 0:
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINE_AA, float_data, 9, byte_data)
+        else:
+            byte_data += bytes([only_check_type]) if motion_type == 0 else bytes([only_check_type, int(motion_type)])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINE_AA, float_data, 9, byte_data, 3, timeout=10)
 
     def move_servo_cart_aa(self, mvpose, mvvelo, mvacc, tool_coord, relative):
         float_data = [mvpose[i] for i in range(6)]
         float_data += [mvvelo, mvacc, tool_coord]
         byte_data = bytes([relative])
         return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_SERVO_CART_AA, float_data, 9, byte_data)
+
+    def move_relative(self, pose, mvvelo, mvacc, mvtime, radius, is_joint_motion=False, is_angle_axis=False, only_check_type=0, motion_type=0, feedback_key=None):
+        float_data = [0] * 7
+        for i in range(min(7, len(pose))):
+            float_data[i] = pose[i]
+        float_data += [mvvelo, mvacc, mvtime, radius]
+        byte_data = bytes([int(is_joint_motion), int(is_angle_axis)])
+        if only_check_type <= 0 and motion_type == 0:
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_RELATIVE, float_data, 11, byte_data, feedback_key=feedback_key)
+        else:
+            byte_data += bytes([only_check_type]) if motion_type == 0 else bytes([only_check_type, int(motion_type)])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_RELATIVE, float_data, 11, byte_data, 3, timeout=10, feedback_key=feedback_key)
 
     def get_position_aa(self):
         return self.get_nfp32(XCONF.UxbusReg.GET_TCP_POSE_AA, 6)
@@ -371,39 +462,59 @@ class UxbusCmd(object):
         hexdata = convert.fp32s_to_bytes(float_data, 12)
         hexdata += byte_data
 
-        ret = self.send_xbus(funcode, hexdata, len(hexdata))
-        if ret != 0:
+        ret = self.send_modbus_request(funcode, hexdata, len(hexdata))
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (ret_fp_num * 4 + 1)
 
-        ret = self.send_pend(funcode, ret_fp_num * 4, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(funcode, ret, ret_fp_num * 4, self._G_TOUT)
         data = [0] * (1 + ret_fp_num)
         data[0] = ret[0]
         data[1:ret_fp_num+1] = convert.bytes_to_fp32s(ret[1:ret_fp_num * 4 + 1], ret_fp_num)
         return data
 
-    def move_line_tool(self, mvpose, mvvelo, mvacc, mvtime):
+    def move_line_tool(self, mvpose, mvvelo, mvacc, mvtime, only_check_type=0, motion_type=0):
         txdata = [mvpose[i] for i in range(6)]
         txdata += [mvvelo, mvacc, mvtime]
-        return self.set_nfp32(XCONF.UxbusReg.MOVE_LINE_TOOL, txdata, 9)
+        if only_check_type <= 0 and motion_type == 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_LINE_TOOL, txdata, 9)
+        else:
+            byte_data = bytes([only_check_type]) if motion_type == 0 else bytes([only_check_type, int(motion_type)])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINE_TOOL, txdata, 9, byte_data, 3, timeout=10)
 
-    def move_lineb(self, mvpose, mvvelo, mvacc, mvtime, mvradii):
+    def move_lineb(self, mvpose, mvvelo, mvacc, mvtime, mvradii, only_check_type=0, motion_type=0):
         txdata = [mvpose[i] for i in range(6)]
         txdata += [mvvelo, mvacc, mvtime, mvradii]
-        return self.set_nfp32(XCONF.UxbusReg.MOVE_LINEB, txdata, 10)
+        if only_check_type <= 0 and motion_type == 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_LINEB, txdata, 10)
+        else:
+            byte_data = bytes([only_check_type]) if motion_type == 0 else bytes([only_check_type, int(motion_type)])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_LINEB, txdata, 10, byte_data, 3, timeout=10)
 
-    def move_joint(self, mvjoint, mvvelo, mvacc, mvtime):
+    def move_joint(self, mvjoint, mvvelo, mvacc, mvtime, only_check_type=0, feedback_key=None):
         txdata = [mvjoint[i] for i in range(7)]
         txdata += [mvvelo, mvacc, mvtime]
-        return self.set_nfp32(XCONF.UxbusReg.MOVE_JOINT, txdata, 10)
+        if only_check_type <= 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_JOINT, txdata, 10, feedback_key=feedback_key)
+        else:
+            byte_data = bytes([only_check_type])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_JOINT, txdata, 10, byte_data, 3, timeout=10, feedback_key=feedback_key)
 
-    def move_jointb(self, mvjoint, mvvelo, mvacc, mvradii):
+    def move_jointb(self, mvjoint, mvvelo, mvacc, mvradii, only_check_type=0, feedback_key=None):
         txdata = [mvjoint[i] for i in range(7)]
         txdata += [mvvelo, mvacc, mvradii]
-        return self.set_nfp32(XCONF.UxbusReg.MOVE_JOINTB, txdata, 10)
+        if only_check_type <= 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_JOINTB, txdata, 10, feedback_key=feedback_key)
+        else:
+            byte_data = bytes([only_check_type])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_JOINTB, txdata, 10, byte_data, 3, timeout=10, feedback_key=feedback_key)
 
-    def move_gohome(self, mvvelo, mvacc, mvtime):
+    def move_gohome(self, mvvelo, mvacc, mvtime, only_check_type=0, feedback_key=None):
         txdata = [mvvelo, mvacc, mvtime]
-        return self.set_nfp32(XCONF.UxbusReg.MOVE_HOME, txdata, 3)
+        if only_check_type <= 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_HOME, txdata, 3, feedback_key=feedback_key)
+        else:
+            byte_data = bytes([only_check_type])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_HOME, txdata, 3, byte_data, 3, timeout=10, feedback_key=feedback_key)
 
     def move_servoj(self, mvjoint, mvvelo, mvacc, mvtime):
         txdata = [mvjoint[i] for i in range(7)]
@@ -415,9 +526,10 @@ class UxbusCmd(object):
         txdata += [mvvelo, mvacc, mvtime]
         return self.set_nfp32(XCONF.UxbusReg.MOVE_SERVO_CART, txdata, 9)
 
-    def set_servot(self, jnt_taus):
-        txdata = [jnt_taus[i] for i in range(7)]
-        return self.set_nfp32(XCONF.UxbusReg.SET_SERVOT, txdata, 7)
+    # # This interface is no longer supported
+    # def set_servot(self, jnt_taus):
+    #     txdata = [jnt_taus[i] for i in range(7)]
+    #     return self.set_nfp32(XCONF.UxbusReg.SET_SERVOT, txdata, 7)
 
     def get_joint_tau(self):
         return self.get_nfp32(XCONF.UxbusReg.GET_JOINT_TAU, 7)
@@ -433,7 +545,7 @@ class UxbusCmd(object):
         txdata = [sltime]
         return self.set_nfp32(XCONF.UxbusReg.SLEEP_INSTT, txdata, 1)
 
-    def move_circle(self, pose1, pose2, mvvelo, mvacc, mvtime, percent):
+    def move_circle(self, pose1, pose2, mvvelo, mvacc, mvtime, percent, only_check_type=0):
         txdata = [0] * 16
         for i in range(6):
             txdata[i] = pose1[i]
@@ -442,8 +554,26 @@ class UxbusCmd(object):
         txdata[13] = mvacc
         txdata[14] = mvtime
         txdata[15] = percent
-        ret = self.set_nfp32(XCONF.UxbusReg.MOVE_CIRCLE, txdata, 16)
-        return ret
+        if only_check_type <= 0:
+            return self.set_nfp32(XCONF.UxbusReg.MOVE_CIRCLE, txdata, 16)
+        else:
+            byte_data = bytes([only_check_type])
+            return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_CIRCLE, txdata, 16, byte_data, 3, timeout=10)
+
+    def move_circle_common(self, pose1, pose2, mvvelo, mvacc, mvtime, percent, coord=0, is_axis_angle=False, only_check_type=0, feedback_key=None):
+        """
+        通用指令，固件1.10.0开始支持 
+        """
+        txdata = [0] * 16
+        for i in range(6):
+            txdata[i] = pose1[i]
+            txdata[6 + i] = pose2[i]
+        txdata[12] = mvvelo
+        txdata[13] = mvacc
+        txdata[14] = mvtime
+        txdata[15] = percent
+        byte_data = bytes([coord, int(is_axis_angle), only_check_type])
+        return self.set_nfp32_with_bytes(XCONF.UxbusReg.MOVE_CIRCLE, txdata, 16, byte_data, 3, timeout=10, feedback_key=feedback_key)
 
     def set_tcp_jerk(self, jerk):
         txdata = [jerk]
@@ -464,10 +594,10 @@ class UxbusCmd(object):
     def set_tcp_offset(self, pose_offset):
         return self.set_nfp32(XCONF.UxbusReg.SET_TCP_OFFSET, pose_offset, 6)
 
-    def set_tcp_load(self, load_mass, load_com):
+    def set_tcp_load(self, load_mass, load_com, feedback_key=None):
         param_list = [load_mass]
         param_list.extend(load_com)
-        return self.set_nfp32(XCONF.UxbusReg.SET_LOAD_PARAM, param_list, 4)
+        return self.set_nfp32(XCONF.UxbusReg.SET_LOAD_PARAM, param_list, 4, feedback_key=feedback_key, feedback_type=XCONF.FeedbackType.TRIGGER)
 
     def set_collis_sens(self, value):
         txdata = [value]
@@ -488,6 +618,9 @@ class UxbusCmd(object):
 
     def get_joint_pos(self):
         return self.get_nfp32(XCONF.UxbusReg.GET_JOINT_POS, 7)
+
+    def get_joint_states(self, num=3):
+        return self.get_nfp32_with_datas(XCONF.UxbusReg.GET_JOINT_POS, [num], 1, 7 * num)
 
     def get_tcp_pose(self):
         return self.get_nfp32(XCONF.UxbusReg.GET_TCP_POSE, 6)
@@ -550,22 +683,22 @@ class UxbusCmd(object):
         txdata = bytes([bid])
         txdata += convert.u16_to_bytes(addr)
         txdata += convert.fp32_to_bytes(value)
-        ret = self.send_xbus(XCONF.UxbusReg.TGPIO_W16B, txdata, 7)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.TGPIO_W16B, txdata, 7)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.TGPIO_W16B, 0, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.TGPIO_W16B, ret, 0, self._G_TOUT)
         return ret
 
     @lock_require
     def tgpio_addr_r16(self, addr, bid=XCONF.TGPIO_HOST_ID, fmt='>l'):
         txdata = bytes([bid])
         txdata += convert.u16_to_bytes(addr)
-        ret = self.send_xbus(XCONF.UxbusReg.TGPIO_R16B, txdata, 3)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.TGPIO_R16B, txdata, 3)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.TGPIO_R16B, 4, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.TGPIO_R16B, ret, 4, self._G_TOUT)
         return [ret[0], convert.bytes_to_num32(ret[1:5], fmt=fmt)]
 
     @lock_require
@@ -573,30 +706,32 @@ class UxbusCmd(object):
         txdata = bytes([bid])
         txdata += convert.u16_to_bytes(addr)
         txdata += convert.fp32_to_bytes(value)
-        ret = self.send_xbus(XCONF.UxbusReg.TGPIO_W32B, txdata, 7)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.TGPIO_W32B, txdata, 7)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.TGPIO_W32B, 0, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.TGPIO_W32B, ret, 0, self._G_TOUT)
         return ret
 
     @lock_require
     def tgpio_addr_r32(self, addr, bid=XCONF.TGPIO_HOST_ID, fmt='>l'):
         txdata = bytes([bid])
         txdata += convert.u16_to_bytes(addr)
-        ret = self.send_xbus(XCONF.UxbusReg.TGPIO_R32B, txdata, 3)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.TGPIO_R32B, txdata, 3)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.TGPIO_R32B, 4, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.TGPIO_R32B, ret, 4, self._G_TOUT)
         return [ret[0], convert.bytes_to_num32(ret[1:5], fmt=fmt)]
 
     def tgpio_get_digital(self):
         ret = self.tgpio_addr_r16(XCONF.ServoConf.DIGITAL_IN)
-        value = [0] * 3
+        value = [0] * 5
         value[0] = ret[0]
         value[1] = ret[1] & 0x0001
         value[2] = (ret[1] & 0x0002) >> 1
+        value[3] = (ret[1] & 0x0004) >> 2
+        value[4] = (ret[1] & 0x0008) >> 3
         return value
 
     def tgpio_set_digital(self, ionum, value):
@@ -609,6 +744,18 @@ class UxbusCmd(object):
             tmp = tmp | 0x0200
             if value:
                 tmp = tmp | 0x0002
+        elif ionum == 3:
+            tmp = tmp | 0x1000
+            if value:
+                tmp = tmp | 0x0010
+        elif ionum == 4:
+            tmp = tmp | 0x0400
+            if value:
+                tmp = tmp | 0x0004
+        elif ionum == 5:
+            tmp = tmp | 0x0800
+            if value:
+                tmp = tmp | 0x0008
         else:
             return [-1, -1]
         return self.tgpio_addr_w16(XCONF.ServoConf.DIGITAL_OUT, tmp)
@@ -627,9 +774,9 @@ class UxbusCmd(object):
         value[1] = ret[1] * 3.3 / 4095.0
         return value
 
-    def set_modbus_timeout(self, value):
+    def set_modbus_timeout(self, value, is_transparent_transmission=False):
         txdata = [int(value)]
-        return self.set_nu16(XCONF.UxbusReg.TGPIO_MB_TIOUT, txdata, 1)
+        return self.set_nu16(XCONF.UxbusReg.TGPIO_COM_TIOUT if is_transparent_transmission else XCONF.UxbusReg.TGPIO_MB_TIOUT, txdata, 1)
 
     def set_modbus_baudrate(self, baudrate):
         if baudrate not in self.BAUDRATES:
@@ -645,59 +792,59 @@ class UxbusCmd(object):
         return ret[:2]
 
     @lock_require
-    def tgpio_set_modbus(self, modbus_t, len_t, host_id=XCONF.TGPIO_HOST_ID, limit_sec=0.0):
+    def tgpio_set_modbus(self, modbus_t, len_t, host_id=XCONF.TGPIO_HOST_ID, limit_sec=0.0, is_transparent_transmission=False):
         txdata = bytes([host_id])
         txdata += bytes(modbus_t)
         if limit_sec > 0:
-            diff_time = time.time() - self._last_modbus_comm_time
+            diff_time = time.monotonic() - self._last_modbus_comm_time
             if diff_time < limit_sec:
                 time.sleep(limit_sec - diff_time)
-        ret = self.send_xbus(XCONF.UxbusReg.TGPIO_MODBUS, txdata, len_t + 1)
-        if ret != 0:
-            self._last_modbus_comm_time = time.time()
+        ret = self.send_modbus_request(XCONF.UxbusReg.TGPIO_COM_DATA if is_transparent_transmission else XCONF.UxbusReg.TGPIO_MODBUS, txdata, len_t + 1)
+        if ret == -1:
+            self._last_modbus_comm_time = time.monotonic()
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.TGPIO_MODBUS, -1, self._GET_TIMEOUT)
-        self._last_modbus_comm_time = time.time()
+        ret = self.recv_modbus_response(XCONF.UxbusReg.TGPIO_COM_DATA if is_transparent_transmission else XCONF.UxbusReg.TGPIO_MODBUS, ret, -1, self._G_TOUT)
+        self._last_modbus_comm_time = time.monotonic()
         return ret
 
     @lock_require
     def tgpio_delay_set_digital(self, ionum, on_off, delay_sec):
         txdata = bytes([ionum, on_off])
         txdata += convert.fp32_to_bytes(delay_sec)
-        ret = self.send_xbus(XCONF.UxbusReg.DELAYED_TGPIO_SET, txdata, 6)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.DELAYED_TGPIO_SET, txdata, 6)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.DELAYED_TGPIO_SET, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.DELAYED_TGPIO_SET, ret, 0, self._S_TOUT)
 
     @lock_require
     def cgpio_delay_set_digital(self, ionum, on_off, delay_sec):
         txdata = bytes([ionum, on_off])
         txdata += convert.fp32_to_bytes(delay_sec)
-        ret = self.send_xbus(XCONF.UxbusReg.DELAYED_CGPIO_SET, txdata, 6)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.DELAYED_CGPIO_SET, txdata, 6)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.DELAYED_CGPIO_SET, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.DELAYED_CGPIO_SET, ret, 0, self._S_TOUT)
 
     @lock_require
     def cgpio_position_set_digital(self, ionum, on_off, xyz, tol_r):
         txdata = bytes([ionum, on_off])
         txdata += convert.fp32s_to_bytes(xyz, 3)
         txdata += convert.fp32_to_bytes(tol_r)
-        ret = self.send_xbus(XCONF.UxbusReg.POSITION_CGPIO_SET, txdata, 18)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.POSITION_CGPIO_SET, txdata, 18)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.POSITION_CGPIO_SET, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.POSITION_CGPIO_SET, ret, 0, self._S_TOUT)
 
     @lock_require
     def tgpio_position_set_digital(self, ionum, on_off, xyz, tol_r):
         txdata = bytes([ionum, on_off])
         txdata += convert.fp32s_to_bytes(xyz, 3)
         txdata += convert.fp32_to_bytes(tol_r)
-        ret = self.send_xbus(XCONF.UxbusReg.POSITION_TGPIO_SET, txdata, 18)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.POSITION_TGPIO_SET, txdata, 18)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.POSITION_TGPIO_SET, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.POSITION_TGPIO_SET, ret, 0, self._S_TOUT)
 
     @lock_require
     def cgpio_position_set_analog(self, ionum, value, xyz, tol_r):
@@ -705,10 +852,10 @@ class UxbusCmd(object):
         txdata += convert.u16_to_bytes(int(value / 10.0 * 4095.0))
         txdata += convert.fp32s_to_bytes(xyz, 3)
         txdata += convert.fp32_to_bytes(tol_r)
-        ret = self.send_xbus(XCONF.UxbusReg.POSITION_CGPIO_SET_ANALOG, txdata, 19)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.POSITION_CGPIO_SET_ANALOG, txdata, 19)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.POSITION_CGPIO_SET_ANALOG, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.POSITION_CGPIO_SET_ANALOG, ret, 0, self._S_TOUT)
 
     # io_type: 0 for CGPIO, 1 for TGPIO
     def config_io_stop_reset(self, io_type, on_off):
@@ -800,22 +947,22 @@ class UxbusCmd(object):
         txdata = bytes([axis_id])
         txdata += convert.u16_to_bytes(addr)
         txdata += convert.fp32_to_bytes(value)
-        ret = self.send_xbus(XCONF.UxbusReg.SERVO_W16B, txdata, 7)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_W16B, txdata, 7)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.SERVO_W16B, 0, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.SERVO_W16B, ret, 0, self._G_TOUT)
         return ret
 
     @lock_require
     def servo_addr_r16(self, axis_id, addr):
         txdata = bytes([axis_id])
         txdata += convert.u16_to_bytes(addr)
-        ret = self.send_xbus(XCONF.UxbusReg.SERVO_R16B, txdata, 3)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_R16B, txdata, 3)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.SERVO_R16B, 4, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.SERVO_R16B, ret, 4, self._G_TOUT)
         return [ret[0], convert.bytes_to_long_big(ret[1:5])]
         # return [ret[0], convert.bytes_to_long_big(ret[1:5])[0]]
 
@@ -824,22 +971,22 @@ class UxbusCmd(object):
         txdata = bytes([axis_id])
         txdata += convert.u16_to_bytes(addr)
         txdata += convert.fp32_to_bytes(value)
-        ret = self.send_xbus(XCONF.UxbusReg.SERVO_W32B, txdata, 7)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_W32B, txdata, 7)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.SERVO_W32B, 0, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.SERVO_W32B, ret, 0, self._G_TOUT)
         return ret
 
     @lock_require
     def servo_addr_r32(self, axis, addr):
         txdata = bytes([axis])
         txdata += convert.u16_to_bytes(addr)
-        ret = self.send_xbus(XCONF.UxbusReg.SERVO_R32B, txdata, 3)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_R32B, txdata, 3)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.SERVO_R32B, 4, self._GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.SERVO_R32B, ret, 4, self._G_TOUT)
         return [ret[0], convert.bytes_to_long_big(ret[1:5])]
         # return [ret[0], convert.bytes_to_long_big(ret[1:5])[0]]
 
@@ -938,8 +1085,11 @@ class UxbusCmd(object):
         return self.set_nu8(XCONF.UxbusReg.SET_SIMULATION_ROBOT, txdata, 1)
 
     def get_power_board_version(self):
-        return self.get_nu8(XCONF.UxbusReg.GET_PWR_VERSION, 3)
-
+        return self.get_nu8(XCONF.UxbusReg.GET_PWR_VERSION, 6)
+    
+    def get_movement(self):
+        return self.get_nu8(XCONF.UxbusReg.GET_MOVEMENT, 1)
+    
     def vc_set_jointv(self, jnt_v, jnt_sync, duration=-1):
         additional_bytes = bytes([jnt_sync])
         if duration >= 0:
@@ -952,8 +1102,15 @@ class UxbusCmd(object):
             additional_bytes += convert.fp32_to_bytes(duration)
         return self.set_nfp32_with_bytes(XCONF.UxbusReg.VC_SET_CARTV, line_v, 6, additional_bytes)
 
-    def iden_load(self, iden_type, num_get, timeout=500):
-        return self.get_nfp32_with_datas(XCONF.UxbusReg.IDEN_LOAD, [iden_type], 1, num_get, timeout=timeout)
+    def iden_load(self, iden_type, num_get, timeout=500, estimated_mass=0):
+        txdata = bytes([iden_type])
+        if estimated_mass > 0:
+            txdata += convert.fp32_to_bytes(estimated_mass)
+        return self.get_nfp32_with_datas(XCONF.UxbusReg.IDEN_LOAD, txdata, 5 if estimated_mass > 0 else 1, num_get, timeout=timeout)
+
+    def iden_joint_friction(self, sn, timeout=500):
+        txdata = [ord(i) for i in list(sn)]
+        return self.get_nfp32_with_datas(XCONF.UxbusReg.IDEN_FRIC, txdata, 14, 1, timeout=timeout)
 
     @lock_require
     def set_impedance(self, coord, c_axis, M, K, B):
@@ -962,29 +1119,29 @@ class UxbusCmd(object):
         txdata += convert.fp32s_to_bytes(M, 6)
         txdata += convert.fp32s_to_bytes(K, 6)
         txdata += convert.fp32s_to_bytes(B, 6)
-        ret = self.send_xbus(XCONF.UxbusReg.IMPEDANCE_CONFIG, txdata, 79)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.IMPEDANCE_CONFIG, txdata, 79)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.IMPEDANCE_CONFIG, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.IMPEDANCE_CONFIG, ret, 0, self._S_TOUT)
 
     @lock_require
     def set_impedance_mbk(self, M, K, B):
         txdata = convert.fp32s_to_bytes(M, 6)
         txdata += convert.fp32s_to_bytes(K, 6)
         txdata += convert.fp32s_to_bytes(B, 6)
-        ret = self.send_xbus(XCONF.UxbusReg.IMPEDANCE_CTRL_MBK, txdata, 72)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.IMPEDANCE_CTRL_MBK, txdata, 72)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.IMPEDANCE_CTRL_MBK, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.IMPEDANCE_CTRL_MBK, ret, 0, self._S_TOUT)
 
     @lock_require
     def set_impedance_config(self, coord, c_axis):
         txdata = bytes([coord])
         txdata += bytes(c_axis[:6])
-        ret = self.send_xbus(XCONF.UxbusReg.IMPEDANCE_CTRL_CONFIG, txdata, 7)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.IMPEDANCE_CTRL_CONFIG, txdata, 7)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.IMPEDANCE_CTRL_CONFIG, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.IMPEDANCE_CTRL_CONFIG, ret, 0, self._S_TOUT)
 
     @lock_require
     def config_force_control(self, coord, c_axis, f_ref, limits):
@@ -992,10 +1149,10 @@ class UxbusCmd(object):
         txdata += bytes(c_axis[:6])
         txdata += convert.fp32s_to_bytes(f_ref, 6)
         txdata += convert.fp32s_to_bytes(limits, 6)
-        ret = self.send_xbus(XCONF.UxbusReg.FORCE_CTRL_CONFIG, txdata, 55)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.FORCE_CTRL_CONFIG, txdata, 55)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.FORCE_CTRL_CONFIG, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.FORCE_CTRL_CONFIG, ret, 0, self._S_TOUT)
 
     @lock_require
     def set_force_control_pid(self, kp, ki, kd, xe_limit):
@@ -1003,10 +1160,10 @@ class UxbusCmd(object):
         txdata += convert.fp32s_to_bytes(ki, 6)
         txdata += convert.fp32s_to_bytes(kd, 6)
         txdata += convert.fp32s_to_bytes(xe_limit, 6)
-        ret = self.send_xbus(XCONF.UxbusReg.FORCE_CTRL_PID, txdata, 96)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.FORCE_CTRL_PID, txdata, 96)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP]
-        return self.send_pend(XCONF.UxbusReg.FORCE_CTRL_PID, 0, self._SET_TIMEOUT)
+        return self.recv_modbus_response(XCONF.UxbusReg.FORCE_CTRL_PID, ret, 0, self._S_TOUT)
 
     def ft_sensor_set_zero(self):
         return self.set_nu8(XCONF.UxbusReg.FTSENSOR_SET_ZERO, 0, 0)
@@ -1032,7 +1189,7 @@ class UxbusCmd(object):
     def ft_sensor_get_data(self, is_new=True):
         return self.get_nfp32(XCONF.UxbusReg.FTSENSOR_GET_DATA if is_new else XCONF.UxbusReg.FTSENSOR_GET_DATA_OLD, 6)
 
-    def ft_senfor_get_config(self):
+    def ft_sensor_get_config(self):
         ret = self.get_nu8(XCONF.UxbusReg.FTSENSOR_GET_CONFIG, 280)
         if ret[0] in [0, 1, 2]:
             ft_app_status = ret[1]
@@ -1073,11 +1230,11 @@ class UxbusCmd(object):
     def ft_sensor_get_error(self):
         txdata = bytes([8])
         txdata += convert.u16_to_bytes(0x0010)
-        ret = self.send_xbus(XCONF.UxbusReg.SERVO_R16B, txdata, 3)
-        if ret != 0:
+        ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_R16B, txdata, 3)
+        if ret == -1:
             return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
 
-        ret = self.send_pend(XCONF.UxbusReg.SERVO_R16B, 4, XCONF.UxbusConf.GET_TIMEOUT)
+        ret = self.recv_modbus_response(XCONF.UxbusReg.SERVO_R16B, ret, 4, XCONF.UxbusConf.GET_TIMEOUT)
         if ret[0] in [0, 1, 2]:
             if convert.bytes_to_long_big(ret[1:5]) == 27:
                 return [ret[0], 0]
@@ -1145,6 +1302,113 @@ class UxbusCmd(object):
         ret = self.tgpio_set_modbus(txdata, 6, host_id=XCONF.LINEER_TRACK_HOST_ID, limit_sec=0.001)
         return ret
 
-    def iden_tcp_load(self):
-        return self.iden_load(1, 4, timeout=300)
+    def iden_tcp_load(self, estimated_mass=0):
+        return self.iden_load(1, 4, timeout=300, estimated_mass=estimated_mass)
 
+    @lock_require
+    def servo_error_addr_r32(self, axis, addr):
+        txdata = bytes([axis])
+        txdata += convert.u16_to_bytes(addr)
+        ret = self.send_modbus_request(XCONF.UxbusReg.SERVO_ERROR, txdata, 3)
+        if ret == -1:
+            return [XCONF.UxbusState.ERR_NOTTCP] * (7 + 1)
+
+        ret = self.recv_modbus_response(XCONF.UxbusReg.SERVO_ERROR, ret, 4, self._G_TOUT)
+        return [ret[0], convert.bytes_to_long_big(ret[1:5])]
+
+    def get_dh_params(self):
+        return self.get_nfp32(XCONF.UxbusReg.GET_DH, 28)
+    
+    def set_dh_params(self, dh_params, flag=0):
+        if len(dh_params) < 28:
+            dh_params.extend([0] * 28 - len(dh_params))
+        byte_data = bytes([flag])
+        return self.set_nfp32_with_bytes(XCONF.UxbusReg.SET_DH, dh_params, 28, byte_data, 1, timeout=10)
+
+    def _set_feedback_type_no_lock(self, feedback_type):
+        ret = self.send_modbus_request(XCONF.UxbusReg.SET_FEEDBACK_TYPE, [feedback_type], 1)
+        if ret == -1:
+            return [XCONF.UxbusState.ERR_NOTTCP]
+        return self.recv_modbus_response(XCONF.UxbusReg.SET_FEEDBACK_TYPE, ret, 0, self._S_TOUT)
+
+    @lock_require
+    def set_feedback_type(self, feedback_type):
+        ret = self._set_feedback_type_no_lock(feedback_type)
+        if ret[0] != XCONF.UxbusState.ERR_NOTTCP:
+            self._feedback_type = feedback_type
+        return ret
+    
+    def check_feedback(self, feedback_key=None):
+        ret = self.set_nu8(XCONF.UxbusReg.FEEDBACK_CHECK, [], 0, feedback_key=feedback_key, feedback_type=XCONF.FeedbackType.MOTION_FINISH)
+        return ret
+    
+    @lock_require
+    def send_hex_cmd(self, datas, timeout=10):
+        if len(datas) < 7:
+            # datas length error
+            return [-2]
+        trans_id = int('{}{}'.format(datas[0], datas[1]), base=16)
+        prot_id = int('{}{}'.format(datas[2], datas[3]), base=16)
+        if prot_id not in [0, 2, 3]:
+            # protocol_identifier error, only support 0/2/3, 
+            #   0: standard modbus protocol
+            #   2: private modbus protocol
+            #   3: private modbus protocol (with heart beat)
+            return [-3]
+        length = int('{}{}'.format(datas[4], datas[5]), base=16)
+        if length != len(datas) - 6:
+            # protocol length data error
+            return [-4]
+        unit_id = int('{}'.format(datas[6]), base=16)
+        pdu_data = bytes.fromhex('{}'.format(''.join(map(str, datas[7:]))))
+        ret = self.send_modbus_request(unit_id, pdu_data, len(pdu_data), prot_id=prot_id, t_id=trans_id)
+        if ret == -1:
+            return [XCONF.UxbusState.ERR_NOTTCP]
+        return self.recv_modbus_response(unit_id, ret, -1, timeout, t_prot_id=prot_id, ret_raw=True)
+
+    def set_common_param(self, param_type, param_val):
+        txdata = bytes([param_type])
+        if param_type == 1:
+            txdata += convert.fp32_to_bytes(param_val)
+        else:
+            txdata += convert.int32_to_bytes(param_val)
+        return self.set_nu8(XCONF.UxbusReg.SET_COMMON_PARAM, txdata, 5)
+    
+    def get_common_param(self, param_type):
+        txdata = bytes([param_type])
+        ret = self.getset_nu8(XCONF.UxbusReg.GET_COMMON_PARAM, txdata, 1, -1)
+        data = [0] * 2
+        data[0] = ret[0]
+        if ret[0] != XCONF.UxbusState.ERR_NOTTCP:
+            if param_type == 1:
+                data[1] = convert.bytes_to_fp32(ret[1:])
+            else:
+                data[1] = convert.bytes_to_u32(ret[1:])
+        return data
+
+    def get_common_info(self, param_type):
+        txdata = bytes([param_type])
+        ret = self.getset_nu8(XCONF.UxbusReg.GET_COMMON_INFO, txdata, 1, -1)
+        data = [0] * 2
+        data[0] = ret[0]
+        if ret[0] != XCONF.UxbusState.ERR_NOTTCP:
+            if param_type == 1 or param_type == 2:
+                data[1] = ret[1]
+            elif param_type == 50:
+                data[1] = convert.bytes_to_fp32(ret[1:])
+            elif param_type == 101:
+                data[1] = ret[1]
+                data.append(convert.bytes_to_fp32(ret[2:6]))
+                data.append(convert.bytes_to_fp32(ret[6:10]))
+            elif param_type in [102, 104]:
+                data[1] = ret[1]
+                data.append(convert.bytes_to_fp32(ret[2:]))
+            elif param_type == 105:
+                data[1] = convert.bytes_to_fp32(ret[1:])
+                data.append(convert.bytes_to_fp32(ret[5:]))
+            elif param_type in [103, 106]:
+                data[1] = ret[1]
+                data.extend(convert.bytes_to_fp32s(ret[2:], 7))
+            else:
+                data[0] = XCONF.UxbusState.ERR_PARAM
+        return data

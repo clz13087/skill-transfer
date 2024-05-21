@@ -5,12 +5,12 @@
 # All rights reserved.
 #
 # Author: Vinman <vinman.wen@ufactory.cc> <vinman.cub@gmail.com>
-
-from .utils import xarm_is_connected
+import time
 from ..core.utils.log import logger
 from ..core.utils import convert
 from .base import Base
 from .code import APIState
+from .decorator import xarm_is_connected
 
 
 class FtSensor(Base):
@@ -132,26 +132,43 @@ class FtSensor(Base):
 
     @xarm_is_connected(_type='get')
     def ft_sensor_iden_load(self):
+        protocol_identifier = self.arm_cmd.get_protocol_identifier()
+        self.arm_cmd.set_protocol_identifier(2)
+        self._keep_heart = False
         ret = self.arm_cmd.ft_sensor_iden_load()
+        self.arm_cmd.set_protocol_identifier(protocol_identifier)
+        self._keep_heart = True
         self.log_api_info('API -> ft_sensor_iden_load -> code={}'.format(ret[0]), code=ret[0])
+        code = self._check_code(ret[0])
+        if code == 0 or len(ret) > 5:
+            ret[2] = ret[2] * 1000  # x_centroid, 从m转成mm
+            ret[3] = ret[3] * 1000  # y_centroid, 从m转成mm
+            ret[4] = ret[4] * 1000  # z_centroid, 从m转成mm
         return self._check_code(ret[0]), ret[1:11]
 
     @xarm_is_connected(_type='set')
     def ft_sensor_cali_load(self, iden_result_list, association_setting_tcp_load=False, **kwargs):
-        ret = self.arm_cmd.ft_sensor_cali_load(iden_result_list)
+        if len(iden_result_list) < 10:
+            return APIState.PARAM_ERROR
+        params = iden_result_list[:]
+        params[1] = params[1] / 1000.0  # x_centroid, 从mm转成m
+        params[2] = params[2] / 1000.0  # y_centroid, 从mm转成m
+        params[3] = params[3] / 1000.0  # z_centroid, 从mm转成m
+        ret = self.arm_cmd.ft_sensor_cali_load(params)
         self.log_api_info('API -> ft_sensor_cali_load -> code={}, iden_result_list={}'.format(ret[0], iden_result_list), code=ret[0])
         ret[0] = self._check_code(ret[0])
         if ret[0] == 0 and association_setting_tcp_load:
-            m = kwargs.get('m', 0.325)
+            m = kwargs.get('m', 0.270)  # 0.325
             x = kwargs.get('x', -17)
             y = kwargs.get('y', 9)
             z = kwargs.get('z', 11.8)
-            weight = iden_result_list[0] + m
+            weight = params[0] + m
             center_of_gravity = [
-                (m * x + iden_result_list[0] * iden_result_list[1]) / weight,
-                (m * y + iden_result_list[0] * iden_result_list[2]) / weight,
-                (m * z + iden_result_list[0] * (32 + iden_result_list[3])) / weight
+                (m * x + params[0] * params[1]) / weight,
+                (m * y + params[0] * params[2]) / weight,
+                (m * z + params[0] * (32 + params[3])) / weight
             ]
+            self.set_state(0)
             return self.set_tcp_load(weight, center_of_gravity)
         return ret[0]
 
@@ -178,8 +195,8 @@ class FtSensor(Base):
         return self._check_code(ret[0]), ret[1:7]
 
     @xarm_is_connected(_type='get')
-    def get_ft_senfor_config(self):
-        ret = self.arm_cmd.ft_senfor_get_config()
+    def get_ft_sensor_config(self):
+        ret = self.arm_cmd.ft_sensor_get_config()
         ret[0] = self._check_code(ret[0])
         return ret[0], ret[1:]
 
@@ -188,3 +205,60 @@ class FtSensor(Base):
         ret = self.arm_cmd.ft_sensor_get_error()
         ret[0] = self._check_code(ret[0])
         return ret[0], ret[1]
+
+    def set_ft_sensor_sn(self, sn):
+        assert len(sn) >= 14, 'The length of SN is wrong'
+        ret = [0]
+        if len(sn) == 14:
+            for i in range(0, 14):
+                value = ord(sn[i])
+                if i < 8:
+                    ret = self.arm_cmd.servo_addr_w16(8, 0x1300+i, value)
+                    ret[0] = self._check_code(ret[0])
+                else:
+                    ret = self.arm_cmd.servo_addr_w16(8, 0x1400+(i-8), value)
+                    ret[0] = self._check_code(ret[0])
+                if ret[0] != 0:
+                    break
+                time.sleep(0.05)
+        self.log_api_info('API -> set_ft_sensor_sn -> code={}, sn={}'.format(ret[0], sn), code=ret[0])
+        return ret[0]
+
+    def get_ft_sensor_sn(self):
+        rd_sn = ''
+        ret = [0, '']
+        for i in range(0, 14):
+            if i < 8:
+                ret = self.arm_cmd.servo_addr_r16(8, 0x0300+i)
+                ret[0] = self._check_code(ret[0])
+            else:
+                ret = self.arm_cmd.servo_addr_r16(8, 0x0400+(i-8))
+                ret[0] = self._check_code(ret[0])
+            if i < 2 and ret[-1] not in [65, 73]:
+                return 1, "********"
+
+            if chr(ret[-1]).isalnum():
+                rd_sn = ''.join([rd_sn, chr(ret[-1])])
+            else:
+                rd_sn = ''.join([rd_sn, '*'])
+            time.sleep(0.05)
+        self.log_api_info('API -> get_ft_sensor_sn -> code={}, sn={}'.format(ret[0], rd_sn), code=ret[0])
+        return ret[0], rd_sn
+
+    def get_ft_sensor_version(self):
+        versions = ['*', '*', '*']
+        ret1 = self.arm_cmd.servo_addr_r16(8, 0x0801)
+        ret1[0] = self._check_code(ret1[0])
+        ret2 = self.arm_cmd.servo_addr_r16(8, 0x0802)
+        ret2[0] = self._check_code(ret2[0])
+        ret3 = self.arm_cmd.servo_addr_r16(8, 0x0803)
+        ret3[0] = self._check_code(ret3[0])
+
+        if ret1[0] == 0 and ret1[1] < 10:
+            versions[0] = ret1[1]
+        if ret2[0] == 0 and ret1[1] < 100:
+            versions[1] = ret2[1]
+        if ret3[0] == 0 and ret1[1] < 1000:
+            versions[2] = ret3[1]
+
+        return ret1[0] or ret2[0] or ret3[0], '.'.join(map(str, versions))

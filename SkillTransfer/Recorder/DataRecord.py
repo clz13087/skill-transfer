@@ -60,11 +60,11 @@ class DataRecordManager:
         for i in range(self.robotNum):
             self.dictGripperValue_R["gripperValue_R" + str(i + 1)] = []
 
-        self.udp = udprecv()  # クラス呼び出し
-
-        streamingThread = threading.Thread(target=self.udp.recv)
-        streamingThread.setDaemon(True)
-        streamingThread.start()
+        # forhead!!!!!!
+        # self.udp = udprecv()  # クラス呼び出し
+        # streamingThread = threading.Thread(target=self.udp.recv)
+        # streamingThread.setDaemon(True)
+        # streamingThread.start()
 
     def Record(self, position, rotation, weight, Gripper_P, robotpos, robotrot, Gripper_R, duration):
         """

@@ -44,6 +44,7 @@ class APIState(object):
     TRAJ_RW_FAILED = 31  # 读写轨迹失败(加载轨迹或保存轨迹)
     TRAJ_RW_TOUT = 32  # 读写轨迹等待超时(加载轨迹或保存轨迹)
     TRAJ_PLAYBACK_TOUT = 33  # 回放轨迹超时(多种情况)
+    TRAJ_PLAYBACK_FAILED = 34  # 回放轨迹失败(多种情况)
     SUCTION_CUP_TOUT = 41  # 等待吸泵设置超时
 
     MODE_IS_NOT_CORRECT = 51  # 模式不正确
@@ -56,4 +57,6 @@ class APIState(object):
     CHECK_FAILED = 101  # 等待操作完成过程检测状态连续失败次数过多
     END_EFFECTOR_HAS_FAULT = 102  # 末端配件有错误
     END_EFFECTOR_NOT_ENABLED = 103  # 末端配件未使能
+
+    # 129 ~ 144: 标准modbus tcp的异常码，实际异常码(api_code - 0x80)
 

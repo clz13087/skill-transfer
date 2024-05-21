@@ -2,11 +2,11 @@
 # __author: rock
 # @time: 2021-04-02
 
-from ..core.utils.log import logger
-from .base import Base
-from .utils import xarm_is_connected
 import math
 import time
+from ..core.utils.log import logger
+from .base import Base
+from .decorator import xarm_is_connected
 
 
 class BaseBoard(Base):
@@ -60,10 +60,12 @@ class BaseBoard(Base):
         if len(sn) == 14:
             for i in range(0, 14, 2):
                 ret = self.arm_cmd.tgpio_addr_w16(addr=0x1900 + (int(i / 2)), value=ord(sn[i]) | ord(sn[i + 1]) << 8, bid=servo_id)
+                code = self._check_code(ret[0])
                 time.sleep(0.1)
-                if ret[0] != 0:
-                    return 1
-                code = ret[0]
+                if code != 0:
+                    self.log_api_info('API -> write_sn -> code={}, sn={}'.format(code, sn), code=code)
+                    return code
+        self.log_api_info('API -> write_sn -> code={}, sn={}'.format(code, sn), code=code)
         return code
 
     @xarm_is_connected(_type='get')
@@ -75,8 +77,11 @@ class BaseBoard(Base):
             time.sleep(0.1)
             rd_sn = ''.join([rd_sn, chr(ret[1] & 0x00FF)])
             rd_sn = ''.join([rd_sn, chr((ret[1] >> 8) & 0x00FF)])
+            ret[0] = self._check_code(ret[0])
             if ret[0] != 0:
+                self.log_api_info('API -> get_sn -> code={}, sn={}'.format(ret[0], rd_sn), code=ret[0])
                 return ret[0], ''
+        self.log_api_info('API -> get_sn -> code={}, sn={}'.format(ret[0], rd_sn), code=ret[0])
         return ret[0], rd_sn
 
     @xarm_is_connected(_type='set')
@@ -100,16 +105,23 @@ class BaseBoard(Base):
 
     @xarm_is_connected(_type='get')
     def get_imu_data(self, board_id=10):
-        ret = self.arm_cmd.tgpio_addr_w16(addr=0x0606, value=1, bid=board_id)
-        if ret[0] == 0:
-            ret1 = self.arm_cmd.tgpio_addr_r32(addr=0x0C00, bid=board_id, fmt='>f')
-            ret2 = self.arm_cmd.tgpio_addr_r32(addr=0x0C02, bid=board_id, fmt='>f')
-            ret3 = self.arm_cmd.tgpio_addr_r32(addr=0x0C04, bid=board_id, fmt='>f')
-            code = 0 if ret1[0] == 0 else ret1[0]
-            code = code if ret2[0] == 0 else ret2[0]
-            code = code if ret3[0] == 0 else ret3[0]
+        code = 0
+        if board_id == 9:
+            self.arm_cmd.tgpio_addr_w16(addr=0x0606, value=1, bid=board_id)
+
+        ret1 = self.arm_cmd.tgpio_addr_r32(addr=0x0C00, bid=board_id, fmt='>f')
+        ret2 = self.arm_cmd.tgpio_addr_r32(addr=0x0C02, bid=board_id, fmt='>f')
+        ret3 = self.arm_cmd.tgpio_addr_r32(addr=0x0C04, bid=board_id, fmt='>f')
+        code = 0 if ret1[0] == 0 else ret1[0]
+        code = code if ret2[0] == 0 else ret2[0]
+        code = code if ret3[0] == 0 else ret3[0]
+
+        if board_id == 9:
+            self.arm_cmd.tgpio_addr_w16(addr=0x0606, value=0, bid=board_id)
+        if code != 0:
+            return code, [1, 1, 1]
+        else:
             return code, [ret1[1], ret2[1], ret3[1]]
-        return ret[0], [1, 1, 1]
 
     @xarm_is_connected(_type='get')
     def read_iden_from_base(self, servo_id=10):
@@ -127,4 +139,60 @@ class BaseBoard(Base):
                 if code != 0:
                     return code, None
             conf.append(vl)
+        return code, conf
+        
+    @xarm_is_connected(_type='set')
+    def write_poe_to_end(self, datas, servo_id=9):
+        cmds1 = [0x0E00, 0x0E0C, 0x0E18, 0x0E24, 0x0E30, 0x0E3C, 0x0E48]
+        cmds2 = 0x0F00
+        code = 0
+        if datas:
+            joints, homes = datas
+            for i, data in enumerate(joints):
+                for j, d in enumerate(data):
+                    ret = self.arm_cmd.tgpio_addr_w32(addr=(cmds1[i] + (2 * j)) | 0x1000, value=d, bid=servo_id)
+                    time.sleep(0.1)
+                    code = ret[0]
+                    if code != 0:
+                        return code
+            for i, data in enumerate(homes):
+                for j, d in enumerate(data):
+                    ret = self.arm_cmd.tgpio_addr_w32(addr=(cmds2 + (2 * (i * len(data) + j))) | 0x1000, value=d, bid=servo_id)
+                    time.sleep(0.1)
+                    code = ret[0]
+                    if code != 0:
+                        return code
+            return code
+        else:
+            return 1
+
+    @xarm_is_connected(_type='get')
+    def read_poe_from_end(self, servo_id=9):
+        cmds = [0x0E00, 0x0E0C, 0x0E18, 0x0E24, 0x0E30, 0x0E3C, 0x0E48]
+        cmds2 = 0x0F00
+        code = 0
+        conf = []
+        joints_conf = []
+        homes_conf = []
+        for i in range(7):
+            vl = []
+            for j in range(6):
+                ret = self.arm_cmd.tgpio_addr_r32(cmds[i] + (2 * j), servo_id, fmt='>f')
+                time.sleep(0.01)
+                vl.append(ret[1])
+                code = ret[0]
+                if code != 0:
+                    return code, None
+            joints_conf.append(vl)
+        for i in range(4):
+            vl = []
+            for j in range(4):
+                ret = self.arm_cmd.tgpio_addr_r32(cmds2 + 2 * (i * 4 + j), servo_id, fmt='>f')
+                time.sleep(0.01)
+                vl.append(ret[1])
+                code = ret[0]
+                if code != 0:
+                    return code, None
+            homes_conf.append(vl)
+        conf = [joints_conf, homes_conf]
         return code, conf

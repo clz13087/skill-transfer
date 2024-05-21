@@ -534,14 +534,24 @@ ControllerErrorCodeMap = {
             'desc': ''
         }
     },
-    19: {
+    18: {
         'en': {
-            'title': 'Gripper Communication Error',
-            'desc': 'Please check whether gripper is installed and the baud rate setting is correct'
+            'title': 'Force Torque Sensor Communication Error',
+            'desc': 'Please check whether the force torque sensor is installed.'
         },
         'cn': {
-            'title': '机械爪通信失败',
-            'desc': '请检查机械爪是否安装，波特率设置是否正确'
+            'title': '力矩传感器通信失败',
+            'desc': '请检查力矩传感器是否安装'
+        }
+    },
+    19: {
+        'en': {
+            'title': 'End Effector Communication Error',
+            'desc': 'Please check whether end effector is installed and the baud rate setting is correct'
+        },
+        'cn': {
+            'title': '末端工具通信失败',
+            'desc': '请检查末端工具是否安装，波特率设置是否正确'
         }
     },
     21: {
@@ -567,11 +577,11 @@ ControllerErrorCodeMap = {
     23: {
         'en': {
             'title': 'Joints Angle Exceed Limit',
-            'desc': 'Please click the "ZERO" button to return to the zero pozition.'
+            'desc': 'Please go to the "Live Control" page and press the "INITIAL POSITION" button to let the robot go to the initial position.'
         },
         'cn': {
             'title': '关节角度超出限制',
-            'desc': '请点击”零点“按钮回到关节零点。'
+            'desc': '请到”实时控制“界面按住”初始点“按钮让机械臂回到初始点。'
         }
     },
     24: {
@@ -724,6 +734,36 @@ ControllerErrorCodeMap = {
             'desc': '请联系技术支持。'
         }
     },
+    40: {
+        'en': {
+            'title': 'Solution failure of error-free joint trajectory',
+            'desc': 'Please adjust the position.'
+        },
+        'cn': {
+            'title': '无报错的关节轨迹求解失败',
+            'desc': '请调整点位。'
+        }
+    },
+    41: {
+        'en': {
+            'title': 'The content of the friction file is invalid.',
+            'desc': 'Please restart the robot with the Emergency Stop Button on the Control Box. If multiple reboots do not work, please contact technical support.'
+        },
+        'cn': {
+            'title': '摩擦力文件内容无效。',
+            'desc': '请通过控制器上的紧急停止按钮重启机械臂。如多次重启无效，请联系技术支持'
+        }
+    },
+    42: {
+        'en': {
+            'title': 'The content of the calibration file is invalid.',
+            'desc': 'Please restart the robot with the Emergency Stop Button on the Control Box. If multiple reboots do not work, please contact technical support.'
+        },
+        'cn': {
+            'title': '校准文件内容无效。',
+            'desc': '请通过控制器上的紧急停止按钮重启机械臂。如多次重启无效，请联系技术支持'
+        }
+    },
     50: {
         'en': {
             'title': 'Six-axis Force Torque Sensor read error',
@@ -762,6 +802,16 @@ ControllerErrorCodeMap = {
         'cn': {
             'title': '六维力矩传感器过载或读数超限',
             'desc': ''
+        }
+    },
+    60: {
+        'en': {
+            'title': 'Linear speed exceeded limit in servo_j mode.',
+            'desc': 'Linear speed limit is {} mm/s, current linear speed {} mm/s.'
+        },
+        'cn': {
+            'title': '关节伺服模式线速度超过限制',
+            'desc': '线速度限制值{}mm/s,当前线速度{}mm/s'
         }
     },
     110: {
@@ -1339,7 +1389,7 @@ class ServoError(BaseCode):
 
 class GripperError(BaseCode):
     def __init__(self, code, status=0):
-        self._code_map = GripperError
+        self._code_map = GripperErrorCodeMap
         super(GripperError, self).__init__(code, status=status)
 
 

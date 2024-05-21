@@ -16,7 +16,7 @@ from FileIO.FileIO import FileIO
 from Participant.ParticipantMotion import ParticipantMotion
 from Recorder.DataRecord import DataRecordManager
 from Robot.xArmTransform import xArmTransform
-from xarm.wrapper.xarm_api import XArmAPI
+from xarm.wrapper import XArmAPI
 
 # ---------- Settings: Input mode ---------- #
 motionDataInputMode = "optitrack"
@@ -25,15 +25,15 @@ gripperDataInputMode = "bendingsensor"
 class ProcessorClass:
     def __init__(self) -> None:
         fileIO = FileIO()
-        dat = fileIO.Read("settings.csv", ",")
+        dat = fileIO.Read("config/settings.csv", ",")
 
         xArmIP_left = [addr for addr in dat if "xArmIPAddress_left" in addr[0]][0][1]
-        initialpos_left = [addr for addr in dat if "initialpos_left," in addr[0]]
-        initialrot_left = [addr for addr in dat if "initialrot_left," in addr[0]]
+        initialpos_left = [addr for addr in dat if "initialpos_left" in addr[0]]
+        initialrot_left = [addr for addr in dat if "initialrot_left" in addr[0]]
 
         xArmIP_right = [addr for addr in dat if "xArmIPAddress_right" in addr[0]][0][1]
-        initialpos_right = [addr for addr in dat if "initialpos_right," in addr[0]]
-        initialrot_right = [addr for addr in dat if "initialrot_right," in addr[0]]
+        initialpos_right = [addr for addr in dat if "initialpos_right" in addr[0]]
+        initialrot_right = [addr for addr in dat if "initialrot_right" in addr[0]]
         
         wirelessIP = [addr for addr in dat if "wirelessIPAddress" in addr[0]][0][1]
         localIP = [addr for addr in dat if "localIPAddress" in addr[0]][0][1]
@@ -56,6 +56,10 @@ class ProcessorClass:
         bendingSensorCom6 = [addr for addr in dat if "bendingSensorCom6" in addr[0]][0][1]
 
         isExportData =  [addr for addr in dat if "isExportData" in addr[0]][0][1]
+        if isExportData == "False":
+            isExportData = 0
+        elif isExportData == "True":
+            isExportData = 1
         dirPath = [addr for addr in dat if "dirPath" in addr[0]][0][1]
 
         participantNum = [addr for addr in dat if "participantNum" in addr[0]][0][1]
@@ -79,18 +83,18 @@ class ProcessorClass:
         self.localIpAddress = localIP
         self.motiveserverIpAddress = motiveserverIP
         self.motivelocalIpAddress = motivelocalIP
-        self.frameRate = frameRate
+        self.frameRate = int(frameRate)
 
         self.bendingSensorPorts = [int(bendingSensorPortParticipant1), int(bendingSensorPortParticipant2), int(bendingSensorPortParticipant3), int(bendingSensorPortParticipant4), int(bendingSensorPortParticipant5), int(bendingSensorPortParticipant6)]
         self.bendingSensorComs = [bendingSensorCom1, bendingSensorCom2, bendingSensorCom3, bendingSensorCom4, bendingSensorCom5, bendingSensorCom6]
 
-        self.isExportData = isExportData
+        self.isExportData = bool(isExportData)
         self.dirPath = dirPath
 
-        self.participantNum = participantNum
-        self.gripperNum = gripperNum
-        self.otherRigidBodyNum = otherRigidBodyNum
-        self.robotNum = robotNum
+        self.participantNum = int(participantNum)
+        self.gripperNum = int(gripperNum)
+        self.otherRigidBodyNum = int(otherRigidBodyNum)
+        self.robotNum = int(robotNum)
 
         self.weightListPos = weightListPos
         self.weightListRot = weightListRot
@@ -102,7 +106,7 @@ class ProcessorClass:
         self.condition = "1"
         self.number = "1"
 
-    def mainloop(self, isFixedFrameRate: bool = False, isChangeOSTimer: bool = False, isExportData: bool = False, isEnablexArm: bool = True):
+    def mainloop(self, isFixedFrameRate: bool = False, isChangeOSTimer: bool = False, isEnablexArm: bool = True):
         """
         Send the position and rotation to the xArm
         """
@@ -164,12 +168,14 @@ class ProcessorClass:
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Bending sensor ----- #
-                    dictGripperValue_R, dictGripperValue_P = (participantMotion.GripperControlValue(weight=weightGripperList, loopCount=self.loopCount))
+                    if self.gripperNum != 0:
+                        dictGripperValue_R, dictGripperValue_P = (participantMotion.GripperControlValue(weight=weightGripperList, loopCount=self.loopCount))
 
                     # ----- Gripper control ----- #
                     if isEnablexArm:
-                        code_1, ret_1 = arm_1.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue1"]))
-                        code_2, ret_2 = arm_2.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue2"]))
+                        if self.gripperNum != 0:
+                            code_1, ret_1 = arm_1.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue1"]))
+                            code_2, ret_2 = arm_2.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue2"]))
 
                     # ----- Data recording ----- #
                     if self.isExportData:

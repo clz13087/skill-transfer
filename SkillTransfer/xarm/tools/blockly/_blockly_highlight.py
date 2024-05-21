@@ -25,6 +25,7 @@ HIGHLIGHT_BLOCKS = [
     'set_suction_cup',
     'get_suction_cup',
     'check_air_pump_state',
+    'set_lite6_gripper',
 
     'gpio_get_analog',
     'gpio_get_digital',
@@ -57,7 +58,8 @@ HIGHLIGHT_BLOCKS = [
     'set_world_offset',
     'set_counter_reset',
     'set_counter_increase',
-
+    'set_collision_sensitivity',
+    
     'set_bio_gripper_init',
     'set_bio_gripper',
     'check_bio_gripper_is_catch',
@@ -83,4 +85,10 @@ HIGHLIGHT_BLOCKS = [
     'controls_whileUntil',
     'controls_repeat_ext',
     'loop_break',
+
+    'python_code',
+    'python_expression',
+    'gpio_get_controller_ci_li',
+    'gpio_get_controller_di_li',
+    'gpio_get_tgpio_li'
 ]

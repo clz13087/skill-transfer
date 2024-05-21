@@ -15,10 +15,11 @@ import sys
 import json
 import time
 import random
-from .blockly_highlight_block import HIGHLIGHT_BLOCKS
+from .blockly._blockly_highlight import HIGHLIGHT_BLOCKS
+from .blockly import BlocklyTool
 
 
-class BlocklyTool(object):
+class BlocklyToolOld(object):
     def __init__(self, path):
         self.tree = ET.parse(path)
         self.root = self.tree.getroot()
@@ -157,9 +158,9 @@ class BlocklyTool(object):
         # if self._highlight_callback is None:
         #     self._insert_to_file(self.index, 'highlight_callback = lambda x:x')
         if arm is None:
-            self._insert_to_file(self.index, 'arm = XArmAPI(sys.argv[1])')
+            self._insert_to_file(self.index, 'arm = XArmAPI(sys.argv[1], baud_checkset=False)')
         elif isinstance(arm, str):
-            self._insert_to_file(self.index, 'arm = XArmAPI(\'{}\')'.format(arm))
+            self._insert_to_file(self.index, 'arm = XArmAPI(\'{}\', baud_checkset=False)'.format(arm))
         if init:
             self._insert_to_file(self.index, 'arm.clean_warn()')
             self._insert_to_file(self.index, 'arm.clean_error()')
@@ -987,8 +988,8 @@ class BlocklyTool(object):
         self._append_to_file('{}    if code != 0:'.format(prefix))
         self._append_to_file('{}        params[\'quit\'] = True'.format(prefix))
         self._append_to_file('{}        pprint(\'set_bio_gripper_enable, code={{}}\'.format(code))'.format(prefix))
-        # self._append_to_file('{}expired = time.time() + 2'.format(prefix))
-        # self._append_to_file('{}while not params[\'quit\'] and time.time() < expired:'.format(prefix))
+        # self._append_to_file('{}expired = time.monotonic() + 2'.format(prefix))
+        # self._append_to_file('{}while not params[\'quit\'] and time.monotonic() < expired:'.format(prefix))
         # self._append_to_file('{}    time.sleep(0.1)'.format(prefix))
 
     def _handle_set_bio_gripper(self, block, prefix='', arg_map=None):
@@ -1400,8 +1401,9 @@ class BlocklyTool(object):
     def _handle_math_change(self, block, prefix='', arg_map=None):
         field = self.get_node('field', block).text
         value = self.get_node('value', root=block)
-        shadow = self.get_node('shadow', root=value)
-        val = self.get_node('field', root=shadow).text
+        # shadow = self.get_node('shadow', root=value)
+        # val = self.get_node('field', root=shadow).text
+        val = self.__get_block_val(value)
         # self._append_to_file('{}params[\'variables\'][\'{}\'] += {}'.format(prefix, field, val))
 
         prefix = self.__check_is_quit(prefix)
@@ -1425,10 +1427,10 @@ class BlocklyTool(object):
         statement = self.get_node('statement', root=block)
         if statement:
             if self._highlight_callback:
-                self._append_to_file('{}t1 = time.time()'.format(prefix))
+                self._append_to_file('{}t1 = time.monotonic()'.format(prefix))
             self.parse(statement, prefix, arg_map=arg_map)
             if self._highlight_callback:
-                self._append_to_file('{}interval = time.time() - t1'.format(prefix))
+                self._append_to_file('{}interval = time.monotonic() - t1'.format(prefix))
                 self._append_to_file('{}if interval < 0.001:'.format(prefix))
                 self._append_to_file('{}    time.sleep(0.001 - interval)'.format(prefix))
         else:
@@ -1451,10 +1453,10 @@ class BlocklyTool(object):
         statement = self.get_node('statement', root=block)
         if statement:
             if self._highlight_callback:
-                self._append_to_file('{}t1 = time.time()'.format(prefix))
+                self._append_to_file('{}t1 = time.monotonic()'.format(prefix))
             self.parse(statement, prefix, arg_map=arg_map)
             if self._highlight_callback:
-                self._append_to_file('{}interval = time.time() - t1'.format(prefix))
+                self._append_to_file('{}interval = time.monotonic() - t1'.format(prefix))
                 self._append_to_file('{}if interval < 0.001:'.format(prefix))
                 self._append_to_file('{}    time.sleep(0.001 - interval)'.format(prefix))
         else:
@@ -1468,10 +1470,10 @@ class BlocklyTool(object):
         statement = self.get_node('statement', root=block)
         if statement:
             if self._highlight_callback:
-                self._append_to_file('{}t1 = time.time()'.format(prefix))
+                self._append_to_file('{}t1 = time.monotonic()'.format(prefix))
             self.parse(statement, prefix, arg_map=arg_map)
             if self._highlight_callback:
-                self._append_to_file('{}interval = time.time() - t1'.format(prefix))
+                self._append_to_file('{}interval = time.monotonic() - t1'.format(prefix))
                 self._append_to_file('{}if interval < 0.001:'.format(prefix))
                 self._append_to_file('{}    time.sleep(0.001 - interval)'.format(prefix))
         else:

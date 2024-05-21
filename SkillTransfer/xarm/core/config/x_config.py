@@ -38,6 +38,9 @@ class XCONF(object):
             XARM7_X4 = 7
             XARM6_X8 = 8
             XARM6_X9 = 9
+            XARM6_X11 = 11
+            XARM6_X12 = 12
+            XARM7_X13 = 13
 
         JOINT_LIMITS = {
             Axis.XARM5: {
@@ -68,12 +71,29 @@ class XCONF(object):
                 ],
                 Type.XARM6_X9: [
                     (-2 * math.pi, 2 * math.pi),
+                    (-2.6179938779914944, 2.6179938779914944),
+                    (-0.061086523819801536, 5.235987755982989),
                     (-2 * math.pi, 2 * math.pi),
-                    (-2 * math.pi, 2 * math.pi),
-                    (-2 * math.pi, 2 * math.pi),
-                    (-2 * math.pi, 2 * math.pi),
+                    (-2.1642082724729685, 2.1642082724729685),
                     (-2 * math.pi, 2 * math.pi),
                 ],
+                Type.XARM6_X11: [
+                    (-2 * math.pi, 2 * math.pi),
+                    (-2 * math.pi, 2 * math.pi),
+                    (-2 * math.pi, 2 * math.pi),
+                    (-2 * math.pi, 2 * math.pi),
+                    (-1.692969, math.pi),
+                    (-2 * math.pi, 2 * math.pi),
+                ],
+                Type.XARM6_X12: [
+                    (-2 * math.pi, 2 * math.pi),
+                    (-2.303834612632515, 2.303834612632515),
+                    (-4.223696789826278, 0.061086523819801536),
+                    (-2 * math.pi, 2 * math.pi),
+                    (-2.1642082724729685, 2.1642082724729685),
+                    (-2 * math.pi, 2 * math.pi),
+                ],
+
             },
             Axis.XARM7: {
                 Type.XARM7_X3: [
@@ -94,6 +114,15 @@ class XCONF(object):
                     (-1.692969, math.pi),  # (-1.75, math.pi),
                     (-2 * math.pi, 2 * math.pi)
                 ],
+                Type.XARM7_X13: [
+                    (-2 * math.pi, 2 * math.pi),
+                    (-2.094395, 2.059488),  # (-2.18, 2.18),
+                    (-2 * math.pi, 2 * math.pi),
+                    (-3.92699, 0.191986),
+                    (-2 * math.pi, 2 * math.pi),
+                    (-math.pi, 1.692969), 
+                    (-2 * math.pi, 2 * math.pi)
+                ]
             }
         }
         TCP_LIMITS = {
@@ -132,6 +161,30 @@ class XCONF(object):
                     (-math.pi, math.pi),
                     (-math.pi, math.pi)
                 ],
+                Type.XARM6_X9: [
+                    (-500, 500),
+                    (-500, 500),
+                    (-150, 750),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi)
+                ],
+                Type.XARM6_X11: [
+                    (-900, 900),
+                    (-900, 900),
+                    (-900, 1200),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi)
+                ],
+                Type.XARM6_X12: [
+                    (-1000, 1000),
+                    (-1000, 1000),
+                    (-400, 1300),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi)
+                ],
             },
             Axis.XARM7: {
                 Type.XARM7_X3: [
@@ -150,6 +203,14 @@ class XCONF(object):
                     (-math.pi, math.pi),
                     (-math.pi, math.pi)
                 ],
+                Type.XARM7_X13: [
+                    (-750, 750),
+                    (-750, 750),
+                    (-400, 1000),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi),
+                    (-math.pi, math.pi)
+                ]
             }
         }
 
@@ -181,8 +242,9 @@ class XCONF(object):
         RELOAD_DYNAMICS = 4
         GET_REPORT_TAU_OR_I = 5
         GET_TCP_ROTATION_RADIUS = 6
+        GET_ALLOW_APPROX_MOTION = 7
 
-        SHUTDOWN_SYSTEM = 10
+        SYSTEM_CONTROL = 10
         MOTION_EN = 11
         SET_STATE = 12
         GET_STATE = 13
@@ -230,7 +292,7 @@ class XCONF(object):
         SET_LIMIT_XYZ = 52
         GET_REDUCED_STATE = 53
 
-        SET_SERVOT = 54
+        SET_SERVOT = 54  # no longer supported
         GET_JOINT_TAU = 55
         SET_SAFE_LEVEL = 56
         GET_SAFE_LEVEL = 57
@@ -244,6 +306,10 @@ class XCONF(object):
         LOAD_TRAJ = 63
         PLAY_TRAJ = 64
         GET_TRAJ_RW_STATUS = 65
+        SET_ALLOW_APPROX_MOTION = 66
+        GET_DH = 67
+        SET_DH = 68
+        GET_MOVEMENT = 69
 
         REPORT_TAU_OR_I = 70
         SET_TIMER = 71
@@ -257,9 +323,11 @@ class XCONF(object):
         SET_SELF_COLLIS_CHECK = 77
         SET_COLLIS_TOOL = 78
         SET_SIMULATION_ROBOT = 79
+        SET_CARTV_CONTINUE = 80
 
         VC_SET_JOINTV = 81
         VC_SET_CARTV = 82
+        MOVE_RELATIVE = 83
 
         GET_TCP_POSE_AA = 91
         MOVE_LINE_AA = 92
@@ -271,11 +339,13 @@ class XCONF(object):
         SERVO_R32B = 104
         SERVO_ZERO = 105
         SERVO_DBMSG = 106
+        SERVO_ERROR = 107
 
         CALI_TCP_POSE = 111
         CALI_TCP_ORIENT = 112
         CALI_WRLD_ORIENT = 113
         CALI_WRLD_POSE = 114
+        IDEN_FRIC = 115
 
         TGPIO_MB_TIOUT = 123
         TGPIO_MODBUS = 124
@@ -320,6 +390,15 @@ class XCONF(object):
         FTSENSOR_GET_CONFIG = 212
 
         GET_MAX_JOINT_VELOCITY = 231
+        SET_COMMON_PARAM = 232
+        GET_COMMON_PARAM = 233
+        GET_COMMON_INFO = 234
+
+        TGPIO_COM_TIOUT = 240
+        TGPIO_COM_DATA = 241
+
+        FEEDBACK_CHECK = 253
+        SET_FEEDBACK_TYPE = 254
 
     class UxbusConf:
         SET_TIMEOUT = 2000  # ms
@@ -376,6 +455,8 @@ class XCONF(object):
 
         MODBUS_BAUDRATE = 0x0A0B
         TOOL_MB_TIMEOUT = 0x0A0E
+        TI2_IN = 0x0A12
+        TI2_TIME = 0x0A13
         DIGITAL_IN = 0x0A14
         DIGITAL_OUT = 0x0A15
         ANALOG_IO1 = 0x0A16
@@ -427,6 +508,18 @@ class XCONF(object):
         USE_PRIMITIVES = 20  # just for judgement, threshold.
         CYLINDER = 21  # radius, height
         BOX = 22  # x, y, z in tool coordinate direction
+    
+    class FeedbackType:
+        MOTION_START = 1
+        MOTION_FINISH = 2
+        TRIGGER = 4
+        OTHER_START = 32
+        OTHER_FINISH = 64
+
+    class FeedbackCode:
+        SUCCESS = 0
+        FAILURE = 1
+        DISCARD = 2
 
 
 

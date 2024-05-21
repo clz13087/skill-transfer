@@ -6,6 +6,7 @@
 #
 # Author: Vinman <vinman.wen@ufactory.cc> <vinman.cub@gmail.com>
 
+import math
 from ..x3 import XArm, Studio
 
 
@@ -75,10 +76,12 @@ class XArmAPI(object):
             check_joint_limit: check the joint param value out of limit or not, default is True
                 Note: only check the param angle of the interface `set_servo_angle` and the param angles of the interface `set_servo_angle_j`
             check_cmdnum_limit: check the cmdnum out of limit or not, default is True
-            max_cmdnum: max cmdnum, default is 256
+            max_cmdnum: max cmdnum, default is 512
                 Note: only available in the param `check_cmdnum_limit` is True
-            check_is_ready: check if the arm is in motion, default is True
+            check_is_ready: check if the arm is ready to move or not, default is True
+                Note: only available if firmware_version < 1.5.20
         """
+        self._is_radian = is_radian
         self._arm = XArm(port=port,
                          is_radian=is_radian,
                          do_not_open=do_not_open,
@@ -98,6 +101,8 @@ class XArmAPI(object):
             'set_fense_mode': self.set_fence_mode,
             'get_suction_cup': self.get_vacuum_gripper,
             'set_suction_cup': self.set_vacuum_gripper,
+            'get_ft_senfor_config': self.get_ft_sensor_config,
+            'shutdown_system': self.system_control,
         }
 
     def __getattr__(self, item):
@@ -107,6 +112,9 @@ class XArmAPI(object):
 
     @property
     def arm(self):
+        """
+        XArm interface implementation class instance, do not use (compatibility is not guaranteed)
+        """
         return self._arm
 
     @property
@@ -127,6 +135,10 @@ class XArmAPI(object):
         Counter val
         """
         return self._arm.count
+
+    @property
+    def only_check_result(self):
+        return self._arm.only_check_result
 
     @property
     def realtime_tcp_speed(self):
@@ -226,8 +238,8 @@ class XArmAPI(object):
         The last used cartesion position, default value of parameter x/y/z/roll/pitch/yaw of interface set_position
         Note:
             1. If self.default_is_radian is True, the returned value (only roll/pitch/yaw) is in radians
-            2. self.set_position(x=300) <==> self.set_position(x=300, *last_used_position[1:])
-            2. self.set_position(roll=-180) <==> self.set_position(x=self.last_used_position[:3], roll=-180, *self.last_used_position[4:])
+            2. self.set_position(x=300) < == > self.set_position(x=300, *last_used_position[1:])
+            2. self.set_position(roll=-180) < == > self.set_position(x=self.last_used_position[:3], roll=-180, *self.last_used_position[4:])
 
         :return: [x(mm), y(mm), z(mm), roll(° or rad), pitch(° or rad), yaw(° or rad)]
         """
@@ -328,8 +340,8 @@ class XArmAPI(object):
         The last used servo angles, default value of parameter angle of interface set_servo_angle
         Note:
             1. If self.default_is_radian is True, the returned value is in radians
-            2. self.set_servo_angle(servo_id=1, angle=75) <==> self.set_servo_angle(angle=[75] + self.last_used_angles[1:])
-            3. self.set_servo_angle(servo_id=5, angle=30) <==> self.set_servo_angle(angle=self.last_used_angles[:4] + [30] + self.last_used_angles[5:])
+            2. self.set_servo_angle(servo_id=1, angle=75) < == > self.set_servo_angle(angle=[75] + self.last_used_angles[1:])
+            3. self.set_servo_angle(servo_id=5, angle=30) < == > self.set_servo_angle(angle=self.last_used_angles[:4] + [30] + self.last_used_angles[5:])
 
         :return: [angle1(° or rad), angle2(° or rad), ..., angle7(° or rad)]
         """
@@ -396,7 +408,7 @@ class XArmAPI(object):
     @property
     def mode(self):
         """
-        xArm mode，only available in socket way and  enable_report is True
+        xArm mode, only available in socket way and  enable_report is True
 
         :return:
             0: position control mode
@@ -405,6 +417,8 @@ class XArmAPI(object):
             3: cartesian teaching mode (invalid)
             4: joint velocity control mode
             5: cartesian velocity control mode
+            6: joint online trajectory planning mode 
+            7: cartesian online trajectory planning mode 
         """
         return self._arm.mode
 
@@ -515,14 +529,14 @@ class XArmAPI(object):
     @property
     def error_code(self):
         """
-        Controller error code. See Chapter 7 of the xArm User Manual for details.
+        Controller error code. See the [Controller Error Code Documentation](./xarm_api_code.md#controller-error-code) for details.
         """
         return self._arm.error_code
 
     @property
     def warn_code(self):
         """
-        Controller warn code. See Chapter 7 of the xArm User Manual for details.
+        Controller warn code. See the [Controller Warn Code Documentation](./xarm_api_code.md#controller-warn-code) for details.
         """
         return self._arm.warn_code
 
@@ -608,11 +622,11 @@ class XArmAPI(object):
         :return: states
             states[0]: contorller gpio module state
                 states[0] == 0: normal
-                states[0] == 1：wrong
-                states[0] == 6：communication failure
+                states[0] == 1: wrong
+                states[0] == 6: communication failure
             states[1]: controller gpio module error code
                 states[1] == 0: normal
-                states[1] != 0：error code
+                states[1] != 0: error code
             states[2]: digital input functional gpio state
                 Note: digital-i-input functional gpio state = states[2] >> i & 0x01
             states[3]: digital input configuring gpio state
@@ -644,10 +658,16 @@ class XArmAPI(object):
 
     @property
     def ft_ext_force(self):
+        """
+        The external force detection value of the Six-axis Force Torque Sensor after filtering, load and offset compensation
+        """
         return self._arm.ft_ext_force
 
     @property
     def ft_raw_force(self):
+        """
+        The direct reading of the Six-axis Force Torque Sensor at the end, without any processing
+        """
         return self._arm.ft_raw_force
 
     def connect(self, port=None, baudrate=None, timeout=None, axis=None, **kwargs):
@@ -730,7 +750,7 @@ class XArmAPI(object):
             'C138': 'set_cgpio_digital_output_function: C138 I{ionum} V{fun}'
             'C139': 'get_cgpio_state: C139'
         :return: code or tuple((code, ...))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.send_cmd_sync(command=command)
 
@@ -743,7 +763,7 @@ class XArmAPI(object):
 
         :param is_radian: the returned value (only roll/pitch/yaw) is in radians or not, default is self.default_is_radian
         :return: tuple((code, [x, y, z, roll, pitch, yaw])), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_position(is_radian=is_radian)
 
@@ -780,9 +800,20 @@ class XArmAPI(object):
         :param is_radian: the roll/pitch/yaw in radians or not, default is self.default_is_radian
         :param wait: whether to wait for the arm to complete, default is False
         :param timeout: maximum waiting time(unit: second), default is None(no timeout), only valid if wait is True
-        :param kwargs: reserved
+        :param kwargs: extra parameters
+            :param motion_type: motion planning type, default is 0
+                motion_type == 0: default, linear planning
+                motion_type == 1: prioritize linear planning, and turn to IK for joint planning when linear planning is not possible
+                motion_type == 2: direct transfer to IK using joint planning
+                Note: 
+                    1. only available if firmware_version >= 1.11.100
+                    2. when motion_type is 1 or 2, linear motion cannot be guaranteed
+                    3. once IK is transferred to joint planning, the given Cartesian velocity and acceleration are converted into joint velocity and acceleration according to the percentage
+                        speed = speed / max_tcp_speed * max_joint_speed
+                        mvacc = mvacc / max_tcp_acc * max_joint_acc
+                    4. if there is no suitable IK, a C40 error will be triggered
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
                 code < 0: the last_used_position/last_used_tcp_speed/last_used_tcp_acc will not be modified
                 code >= 0: the last_used_position/last_used_tcp_speed/last_used_tcp_acc will be modified
         """
@@ -792,7 +823,7 @@ class XArmAPI(object):
 
     def set_tool_position(self, x=0, y=0, z=0, roll=0, pitch=0, yaw=0,
                           speed=None, mvacc=None, mvtime=None, is_radian=None,
-                          wait=False, timeout=None, **kwargs):
+                          wait=False, timeout=None, radius=None, **kwargs):
         """
         Movement relative to the tool coordinate system
         Note:
@@ -813,17 +844,35 @@ class XArmAPI(object):
         :param is_radian: the roll/pitch/yaw in radians or not, default is self.default_is_radian
         :param wait: whether to wait for the arm to complete, default is False
         :param timeout: maximum waiting time(unit: second), default is None(no timeout), only valid if wait is True
-        :param kwargs: reserved
+        :param radius: move radius, if radius is None or radius less than 0, will MoveToolLine, else MoveToolArcLine
+            only available if firmware_version >= 1.11.100
+            MoveToolLine: Linear motion
+                ex: code = arm.set_tool_position(..., radius=None)
+            MoveToolArcLine: Linear arc motion with interpolation
+                ex: code = arm.set_tool_position(..., radius=0)
+                Note: Need to set radius>=0
+        :param kwargs: extra parameters
+            :param motion_type: motion planning type, default is 0
+                motion_type == 0: default, linear planning
+                motion_type == 1: prioritize linear planning, and turn to IK for joint planning when linear planning is not possible
+                motion_type == 2: direct transfer to IK using joint planning
+                Note: 
+                    1. only available if firmware_version >= 1.11.100
+                    2. when motion_type is 1 or 2, linear motion cannot be guaranteed
+                    3. once IK is transferred to joint planning, the given Cartesian velocity and acceleration are converted into joint velocity and acceleration according to the percentage
+                        speed = speed / max_tcp_speed * max_joint_speed
+                        mvacc = mvacc / max_tcp_acc * max_joint_acc
+                    4. if there is no suitable IK, a C40 error will be triggered
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
                 code < 0: the last_used_tcp_speed/last_used_tcp_acc will not be modified
                 code >= 0: the last_used_tcp_speed/last_used_tcp_acc will be modified
         """
         return self._arm.set_tool_position(x=x, y=y, z=z, roll=roll, pitch=pitch, yaw=yaw,
                                            speed=speed, mvacc=mvacc, mvtime=mvtime,
-                                           is_radian=is_radian, wait=wait, timeout=timeout, **kwargs)
+                                           is_radian=is_radian, wait=wait, timeout=timeout, radius=radius, **kwargs)
 
-    def get_servo_angle(self, servo_id=None, is_radian=None):
+    def get_servo_angle(self, servo_id=None, is_radian=None, is_real=False):
         """
         Get the servo angle
         Note:
@@ -836,9 +885,9 @@ class XArmAPI(object):
         :param servo_id: 1-(Number of axes), None(8), default is None
         :param is_radian: the returned value is in radians or not, default is self.default_is_radian
         :return: tuple((code, angle list if servo_id is None or 8 else angle)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.get_servo_angle(servo_id=servo_id, is_radian=is_radian)
+        return self._arm.get_servo_angle(servo_id=servo_id, is_radian=is_radian, is_real=is_real)
 
     def set_servo_angle(self, servo_id=None, angle=None, speed=None, mvacc=None, mvtime=None,
                         relative=False, is_radian=None, wait=False, timeout=None, radius=None, **kwargs):
@@ -879,7 +928,7 @@ class XArmAPI(object):
                 Note: Need to set radius>=0
         :param kwargs: reserved
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
                 code < 0: the last_used_angles/last_used_joint_speed/last_used_joint_acc will not be modified
                 code >= 0: the last_used_angles/last_used_joint_speed/last_used_joint_acc will be modified
         """
@@ -900,7 +949,7 @@ class XArmAPI(object):
         :param is_radian: the angles in radians or not, default is self.default_is_radian
         :param kwargs: reserved
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_servo_angle_j(angles, speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian, **kwargs)
 
@@ -916,12 +965,13 @@ class XArmAPI(object):
         :param is_tool_coord: is tool coordinate or not
         :param kwargs: reserved
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_servo_cartesian(mvpose, speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian,
                                              is_tool_coord=is_tool_coord, **kwargs)
 
-    def move_circle(self, pose1, pose2, percent, speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None, **kwargs):
+    def move_circle(self, pose1, pose2, percent, speed=None, mvacc=None, mvtime=None, is_radian=None,
+                    wait=False, timeout=None, is_tool_coord=False, is_axis_angle=False, **kwargs):
         """
         The motion calculates the trajectory of the space circle according to the three-point coordinates.
         The three-point coordinates are (current starting point, pose1, pose2).
@@ -935,15 +985,19 @@ class XArmAPI(object):
         :param is_radian: roll/pitch/yaw value is radians or not, default is self.default_is_radian
         :param wait: whether to wait for the arm to complete, default is False
         :param timeout: maximum waiting time(unit: second), default is None(no timeout), only valid if wait is True
+        :param is_tool_coord: is tool coord or not, default is False, only available if firmware_version >= 1.11.100
+        :param is_axis_angle: is axis angle or not, default is False, only available if firmware_version >= 1.11.100
         :param kwargs: reserved
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
                 code < 0: the last_used_tcp_speed/last_used_tcp_acc will not be modified
                 code >= 0: the last_used_tcp_speed/last_used_tcp_acc will be modified
         """
-        return self._arm.move_circle(pose1, pose2, percent, speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian, wait=wait, timeout=timeout, **kwargs)
+        return self._arm.move_circle(pose1, pose2, percent, speed=speed, mvacc=mvacc, mvtime=mvtime,
+                                     is_radian=is_radian, wait=wait, timeout=timeout,
+                                     is_tool_coord=is_tool_coord, is_axis_angle=is_axis_angle, **kwargs)
 
-    def move_gohome(self, speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None):
+    def move_gohome(self, speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None, **kwargs):
         """
         Move to go home (Back to zero), the API will modify self.last_used_position and self.last_used_angles value
         Warnning: without limit detection
@@ -961,9 +1015,9 @@ class XArmAPI(object):
         :param wait: whether to wait for the arm to complete, default is False
         :param timeout: maximum waiting time(unit: second), default is None(no timeout), only valid if wait is True
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.move_gohome(speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian, wait=wait, timeout=timeout)
+        return self._arm.move_gohome(speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian, wait=wait, timeout=timeout, **kwargs)
 
     def move_arc_lines(self, paths, is_radian=None, times=1, first_pause_time=0.1, repeat_pause_time=0,
                        automatic_calibration=True, speed=None, mvacc=None, mvtime=None, wait=False):
@@ -976,8 +1030,8 @@ class XArmAPI(object):
             4. The last_used_angles/last_used_joint_speed/last_used_joint_acc will not be modified.
 
         :param paths: cartesian path list
-            1. Specify arc radius： [[x, y, z, roll, pitch, yaw, radius], ....]
-            2. Do not specify arc radius (radius=0)： [[x, y, z, roll, pitch, yaw], ....]
+            1. Specify arc radius: [[x, y, z, roll, pitch, yaw, radius], ....]
+            2. Do not specify arc radius (radius=0): [[x, y, z, roll, pitch, yaw], ....]
             3. If you want to plan the continuous motion,set radius>0.
 
         :param is_radian: roll/pitch/yaw of paths are in radians or not, default is self.default_is_radian
@@ -1004,7 +1058,7 @@ class XArmAPI(object):
             2: 8: attach all joints
                 ex: arm.set_servo_attach(servo_id=8)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_servo_attach(servo_id=servo_id)
 
@@ -1018,7 +1072,7 @@ class XArmAPI(object):
             2: 8: detach all joints, please
                 ex: arm.set_servo_detach(servo_id=8)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_servo_detach(servo_id=servo_id)
 
@@ -1027,7 +1081,7 @@ class XArmAPI(object):
         Get the xArm firmware version
 
         :return: tuple((code, version)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_version()
 
@@ -1036,7 +1090,7 @@ class XArmAPI(object):
         Get the xArm sn
 
         :return: tuple((code, sn)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_robot_sn()
 
@@ -1045,22 +1099,22 @@ class XArmAPI(object):
         check verification
 
         :return: tuple((code, status)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status:
                 0: verified
                 other: not verified
         """
         return self._arm.check_verification()
 
-    def shutdown_system(self, value=1):
+    def system_control(self, value=1):
         """
-        Shutdown the xArm controller system
+        Control the xArm controller system
 
-        :param value: 1: remote shutdown
+        :param value: 1: shutdown, 2: reboot
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.shutdown_system(value=value)
+        return self._arm.system_control(value=value)
 
     def get_trajectories(self):
         """
@@ -1071,7 +1125,7 @@ class XArmAPI(object):
             2. This interface relies on Firmware 1.2.0 or above
 
         :return: tuple((code, trajectories))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             trajectories: [{
                 'name': name, # The name of the trajectory
                 'duration': duration, # The duration of the trajectory (seconds)
@@ -1088,11 +1142,11 @@ class XArmAPI(object):
             2. set joint teaching mode: set_mode(2);set_state(0)
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.start_record_trajectory()
 
-    def stop_record_trajectory(self, filename=None):
+    def stop_record_trajectory(self, filename=None, **kwargs):
         """
         Stop trajectory recording
 
@@ -1106,11 +1160,25 @@ class XArmAPI(object):
             4. This action will overwrite the trajectory with the same name
             5. Empty the trajectory in memory after saving
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.stop_record_trajectory(filename=filename)
+        return self._arm.stop_record_trajectory(filename=filename, **kwargs)
+    
+    def get_record_seconds(self):
+        """
+        Get record seconds
+        Note:
+            1. Only available if firmware_version >= 2.4.0
+            2. Only valid during recording or after recording but before saving
 
-    def save_record_trajectory(self, filename, wait=True, timeout=2):
+        :return: tuple((code, seconds)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            seconds: The actual duration of the recorded track
+        """
+        ret = self._arm.get_common_info(50, return_val=True)
+        return ret
+
+    def save_record_trajectory(self, filename, wait=True, timeout=5, **kwargs):
         """
         Save the trajectory you just recorded
 
@@ -1125,11 +1193,11 @@ class XArmAPI(object):
         :param wait: Whether to wait for saving, default is True
         :param timeout: Timeout waiting for saving to complete
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.save_record_trajectory(filename, wait=wait, timeout=timeout)
+        return self._arm.save_record_trajectory(filename, wait=wait, timeout=timeout, **kwargs)
 
-    def load_trajectory(self, filename, wait=True, timeout=10):
+    def load_trajectory(self, filename, wait=True, timeout=None, **kwargs):
         """
         Load the trajectory
 
@@ -1140,11 +1208,11 @@ class XArmAPI(object):
         :param wait: Whether to wait for loading, default is True
         :param timeout: Timeout waiting for loading to complete
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.load_trajectory(filename, wait=wait, timeout=timeout)
+        return self._arm.load_trajectory(filename, wait=wait, timeout=timeout, **kwargs)
 
-    def playback_trajectory(self, times=1, filename=None, wait=True, double_speed=1):
+    def playback_trajectory(self, times=1, filename=None, wait=True, double_speed=1, **kwargs):
         """
         Playback trajectory
 
@@ -1158,16 +1226,16 @@ class XArmAPI(object):
         :param wait: whether to wait for the arm to complete, default is False
         :param double_speed: double speed, only support 1/2/4, default is 1, only available if version > 1.2.11
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.playback_trajectory(times=times, filename=filename, wait=wait, double_speed=double_speed)
+        return self._arm.playback_trajectory(times=times, filename=filename, wait=wait, double_speed=double_speed, **kwargs)
 
     def get_trajectory_rw_status(self):
         """
         Get trajectory read/write status
 
         :return: (code, status)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status:
                 0: no read/write
                 1: loading
@@ -1187,7 +1255,7 @@ class XArmAPI(object):
             1. This interface relies on Firmware 1.2.0 or above
 
         :return: tuple((code, mode))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             mode: 0 or 1, 1 means that the reduced mode is turned on. 0 means that the reduced mode is not turned on
         """
         return self._arm.get_reduced_mode()
@@ -1201,7 +1269,7 @@ class XArmAPI(object):
 
         :param is_radian: the max_joint_speed of the states is in radians or not, default is self.default_is_radian
         :return: tuple((code, states))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             states: [....]
                 if version > 1.2.11:
                     states: [
@@ -1212,14 +1280,14 @@ class XArmAPI(object):
                         joint_ranges([joint-1-min, joint-1-max, ..., joint-7-min, joint-7-max]),
                         safety_boundary_is_on,
                         collision_rebound_is_on,
-                    ]`
+                    ]
                 if version <= 1.2.11:
                     states: [
                         reduced_mode_is_on,
                         [reduced_x_max, reduced_x_min, reduced_y_max, reduced_y_min, reduced_z_max, reduced_z_min],
                         reduced_max_tcp_speed,
                         reduced_max_joint_speed,
-                    ]`
+                    ]
         """
         return self._arm.get_reduced_states(is_radian=is_radian)
 
@@ -1233,7 +1301,7 @@ class XArmAPI(object):
         :param on: True/False
                    such as:Turn on the reduced mode : code=arm.set_reduced_mode(True)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_reduced_mode(on)
 
@@ -1247,7 +1315,7 @@ class XArmAPI(object):
 
         :param speed: speed (mm/s)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_reduced_max_tcp_speed(speed)
 
@@ -1262,7 +1330,7 @@ class XArmAPI(object):
         :param speed: speed (°/s or rad/s)
         :param is_radian: the speed is in radians or not, default is self.default_is_radian
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_reduced_max_joint_speed(speed, is_radian=is_radian)
 
@@ -1276,7 +1344,7 @@ class XArmAPI(object):
 
         :param boundary: [x_max, x_min, y_max, y_min, z_max, z_min]
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_reduced_tcp_boundary(boundary)
 
@@ -1303,7 +1371,7 @@ class XArmAPI(object):
 
         :param on: True/False
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_fense_mode(on)
 
@@ -1316,11 +1384,11 @@ class XArmAPI(object):
 
         :param on: True/False
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_collision_rebound(on)
 
-    def set_world_offset(self, offset, is_radian=None):
+    def set_world_offset(self, offset, is_radian=None, wait=True):
         """
         Set the base coordinate offset
 
@@ -1329,10 +1397,11 @@ class XArmAPI(object):
 
         :param offset: [x, y, z, roll, pitch, yaw]
         :param is_radian: the roll/pitch/yaw in radians or not, default is self.default_is_radian
+        :param wait: whether to wait for the robotic arm to stop or all previous queue commands to be executed or cleared before setting
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_world_offset(offset, is_radian=is_radian)
+        return self._arm.set_world_offset(offset, is_radian=is_radian, wait=wait)
 
     def get_is_moving(self):
         """
@@ -1346,7 +1415,7 @@ class XArmAPI(object):
         Get state
 
         :return: tuple((code, state)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             state:
                 1: in motion
                 2: sleeping
@@ -1364,11 +1433,11 @@ class XArmAPI(object):
             3: pause state
             4: stop state
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_state(state=state)
 
-    def set_mode(self, mode=0):
+    def set_mode(self, mode=0, detection_param=0):
         """
         Set the xArm mode
 
@@ -1382,16 +1451,24 @@ class XArmAPI(object):
             3: cartesian teaching mode (invalid)
             4: joint velocity control mode
             5: cartesian velocity control mode
+            6: joint online trajectory planning mode 
+            7: cartesian online trajectory planning mode 
+        :param detection_param: Teaching detection parameters, default is 0
+            0: Turn on motion detection 
+            1: Turn off motion detection
+            Note:
+                1. only available if firmware_version >= 1.10.1
+                2. only available if set_mode(2)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_mode(mode=mode)
+        return self._arm.set_mode(mode=mode, detection_param=detection_param)
 
     def get_cmdnum(self):
         """
         Get the cmd count in cache
         :return: tuple((code, cmd_num)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_cmdnum()
 
@@ -1402,9 +1479,9 @@ class XArmAPI(object):
         :param show: show the detail info if True
         :param lang: show language, en/cn, degault is en, only available if show is True
         :return: tuple((code, [error_code, warn_code])), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
-            error_code: See Chapter 7 of the xArm User Manual for details.
-            warn_code: See Chapter 7 of the xArm User Manual for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            error_code: See the [Controller Error Code Documentation](./xarm_api_code.md#controller-error-code) for details.
+            warn_code: See the [Controller Error Code Documentation](./xarm_api_code.md#controller-warn-code) for details.
         """
         return self._arm.get_err_warn_code(show=show, lang=lang)
 
@@ -1413,7 +1490,7 @@ class XArmAPI(object):
         Clean the error, need to be manually enabled motion(arm.motion_enable(True)) and set state(arm.set_state(state=0))after clean error
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.clean_error()
 
@@ -1422,7 +1499,7 @@ class XArmAPI(object):
         Clean the warn
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.clean_warn()
 
@@ -1433,7 +1510,7 @@ class XArmAPI(object):
         :param enable:True/False
         :param servo_id: 1-(Number of axes), None(8)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.motion_enable(servo_id=servo_id, enable=enable)
 
@@ -1462,11 +1539,11 @@ class XArmAPI(object):
         :param sltime: sleep time,unit:(s)second
         :param wait: wait or not, default is False
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_pause_time(sltime, wait=wait)
 
-    def set_tcp_offset(self, offset, is_radian=None, **kwargs):
+    def set_tcp_offset(self, offset, is_radian=None, wait=True, **kwargs):
         """
         Set the tool coordinate system offset at the end
         Note:
@@ -1478,10 +1555,11 @@ class XArmAPI(object):
 
         :param offset: [x, y, z, roll, pitch, yaw]
         :param is_radian: the roll/pitch/yaw in radians or not, default is self.default_is_radian
+        :param wait: whether to wait for the robotic arm to stop or all previous queue commands to be executed or cleared before setting
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_tcp_offset(offset, is_radian=is_radian, **kwargs)
+        return self._arm.set_tcp_offset(offset, is_radian=is_radian, wait=wait, **kwargs)
 
     def set_tcp_jerk(self, jerk):
         """
@@ -1494,7 +1572,7 @@ class XArmAPI(object):
 
         :param jerk: jerk (mm/s^3)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_tcp_jerk(jerk)
 
@@ -1509,7 +1587,7 @@ class XArmAPI(object):
 
         :param acc: max acceleration (mm/s^2)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_tcp_maxacc(acc)
 
@@ -1525,7 +1603,7 @@ class XArmAPI(object):
         :param jerk: jerk (°/s^3 or rad/s^3)
         :param is_radian: the jerk in radians or not, default is self.default_is_radian
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_joint_jerk(jerk, is_radian=is_radian)
 
@@ -1542,11 +1620,11 @@ class XArmAPI(object):
         :param acc: max acceleration (°/s^2 or rad/s^2)
         :param is_radian: the jerk in radians or not, default is self.default_is_radian
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_joint_maxacc(acc, is_radian=is_radian)
 
-    def set_tcp_load(self, weight, center_of_gravity):
+    def set_tcp_load(self, weight, center_of_gravity, wait=False, **kwargs):
         """
         Set the end load of xArm
 
@@ -1558,12 +1636,13 @@ class XArmAPI(object):
 
         :param weight: load weight (unit: kg)
         :param center_of_gravity: load center of gravity, such as [x(mm), y(mm), z(mm)]
+        :param wait: whether to wait for the command to be executed or the the robotic arm to stop
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_tcp_load(weight, center_of_gravity)
+        return self._arm.set_tcp_load(weight, center_of_gravity, wait=wait, **kwargs)
 
-    def set_collision_sensitivity(self, value):
+    def set_collision_sensitivity(self, value, wait=True):
         """
         Set the sensitivity of collision
 
@@ -1574,12 +1653,13 @@ class XArmAPI(object):
             4. The clean_conf interface can restore system default settings
 
         :param value: sensitivity value, 0~5
+        :param wait: reversed
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_collision_sensitivity(value)
+        return self._arm.set_collision_sensitivity(value, wait=wait)
 
-    def set_teach_sensitivity(self, value):
+    def set_teach_sensitivity(self, value, wait=True):
         """
         Set the sensitivity of drag and teach
 
@@ -1590,12 +1670,13 @@ class XArmAPI(object):
             4. The clean_conf interface can restore system default settings
 
         :param value: sensitivity value, 1~5
+        :param wait: whether to wait for the robotic arm to stop or all previous queue commands to be executed or cleared before setting
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_teach_sensitivity(value)
+        return self._arm.set_teach_sensitivity(value, wait=wait)
 
-    def set_gravity_direction(self, direction):
+    def set_gravity_direction(self, direction, wait=True):
         """
         Set the direction of gravity
 
@@ -1606,10 +1687,11 @@ class XArmAPI(object):
             4. The clean_conf interface can restore system default settings
 
         :param direction: direction of gravity, such as [x(mm), y(mm), z(mm)]
+        :param wait: whether to wait for the robotic arm to stop or all previous queue commands to be executed or cleared before setting
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_gravity_direction(direction=direction)
+        return self._arm.set_gravity_direction(direction=direction, wait=wait)
 
     def set_mount_direction(self, base_tilt_deg, rotation_deg, is_radian=None):
         """
@@ -1625,7 +1707,7 @@ class XArmAPI(object):
         :param rotation_deg: rotation degree
         :param is_radian: the base_tilt_deg/rotation_deg in radians or not, default is self.default_is_radian
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_mount_direction(base_tilt_deg, rotation_deg, is_radian=is_radian)
 
@@ -1636,7 +1718,7 @@ class XArmAPI(object):
             1. This interface will clear the current settings and restore to the original settings (system default settings)
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.clean_conf()
 
@@ -1648,7 +1730,7 @@ class XArmAPI(object):
             2. The clean_conf interface can restore system default settings
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.save_conf()
 
@@ -1661,7 +1743,7 @@ class XArmAPI(object):
         :param input_is_radian: the param pose value(only roll/pitch/yaw) is in radians or not, default is self.default_is_radian
         :param return_is_radian: the returned value is in radians or not, default is self.default_is_radian
         :return: tuple((code, angles)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             angles: [angle-1(rad or °), angle-2, ..., angle-(Number of axes)] or []
                 Note: the returned angle value is radians if return_is_radian is True, else °
         """
@@ -1675,7 +1757,7 @@ class XArmAPI(object):
         :param input_is_radian: the param angles value is in radians or not, default is self.default_is_radian
         :param return_is_radian: the returned value is in radians or not, default is self.default_is_radian
         :return: tuple((code, pose)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             pose: [x(mm), y(mm), z(mm), roll(rad or °), pitch(rad or °), yaw(rad or °)] or []
                 Note: the roll/pitch/yaw value is radians if return_is_radian is True, else °
         """
@@ -1688,7 +1770,7 @@ class XArmAPI(object):
         :param pose: [x, y, z, roll, pitch, yaw]
         :param is_radian: roll/pitch/yaw value is radians or not, default is self.default_is_radian
         :return: tuple((code, limit)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             limit: True/False/None, limit or not, or failed
         """
         return self._arm.is_tcp_limit(pose, is_radian=is_radian)
@@ -1700,7 +1782,7 @@ class XArmAPI(object):
         :param joint: [angle-1, angle-2, ..., angle-n], n is the number of axes of the arm
         :param is_radian: angle value is radians or not, default is self.default_is_radian
         :return: tuple((code, limit)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             limit: True/False/None, limit or not, or failed
         """
         return self._arm.is_joint_limit(joint, is_radian=is_radian)
@@ -1720,7 +1802,7 @@ class XArmAPI(object):
         :param enable: enable or not
          Note： such as code = arm.set_gripper_enable(True)  #turn on the Gripper
         :return: code
-            code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_gripper_enable(enable, **kwargs)
 
@@ -1729,9 +1811,9 @@ class XArmAPI(object):
         Set the gripper mode
 
         :param mode: 0: location mode
-         Note： such as code = rm.set_gripper_mode(0)
+         Note： such as code = arm.set_gripper_mode(0)
         :return: code
-            code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_gripper_mode(mode, **kwargs)
 
@@ -1740,7 +1822,7 @@ class XArmAPI(object):
         Get the gripper position
 
         :return: tuple((code, pos)), only when code is 0, the returned result is correct.
-            code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_gripper_position(**kwargs)
 
@@ -1754,7 +1836,7 @@ class XArmAPI(object):
         :param auto_enable: auto enable or not, default is False
         :param timeout: wait time, unit:second, default is 10s
         :return: code
-            code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_gripper_position(pos, wait=wait, speed=speed, auto_enable=auto_enable, timeout=timeout, **kwargs)
 
@@ -1764,7 +1846,7 @@ class XArmAPI(object):
 
         :param speed:
         :return: code
-            code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_gripper_speed(speed, **kwargs)
 
@@ -1773,8 +1855,8 @@ class XArmAPI(object):
         Get the gripper error code
 
         :return: tuple((code, err_code)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
-            err_code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_code: See the [Gripper Error Code Documentation](./xarm_api_code.md#gripper-error-code) for details.
         """
         return self._arm.get_gripper_err_code(**kwargs)
 
@@ -1783,17 +1865,27 @@ class XArmAPI(object):
         Clean the gripper error
 
         :return: code
-            code: See the Gripper code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.clean_gripper_error(**kwargs)
+    
+    def get_tgpio_output_digital(self, ionum=None):
+        """
+        Get the digital value of the specified Tool GPIO output
 
+        :param ionum: 0 or 1 or 2 or 3 or 4 or None(both 0 and 1 and 2 and 3 and 4), default is None
+        :return: tuple((code, value or value list)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.get_tgpio_output_digital(ionum)
+    
     def get_tgpio_digital(self, ionum=None):
         """
         Get the digital value of the specified Tool GPIO
 
         :param ionum: 0 or 1 or None(both 0 and 1), default is None
         :return: tuple((code, value or value list)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_tgpio_digital(ionum)
 
@@ -1805,7 +1897,7 @@ class XArmAPI(object):
         :param value: value
         :param delay_sec: delay effective time from the current start, in seconds, default is None(effective immediately)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_tgpio_digital(ionum=ionum, value=value, delay_sec=delay_sec)
 
@@ -1814,7 +1906,7 @@ class XArmAPI(object):
         Get the analog value of the specified Tool GPIO
         :param ionum: 0 or 1 or None(both 0 and 1), default is None
         :return: tuple((code, value or value list)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_tgpio_analog(ionum)
 
@@ -1823,7 +1915,7 @@ class XArmAPI(object):
         Get vacuum gripper state
 
         :return: tuple((code, state)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             state: suction cup state
                 0: suction cup is off
                 1: suction cup is on
@@ -1841,7 +1933,7 @@ class XArmAPI(object):
         :param timeout: wait time, unit:second, default is 3s
         :param delay_sec: delay effective time from the current start, in seconds, default is None(effective immediately)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_suction_cup(on, wait=wait, timeout=timeout, delay_sec=delay_sec)
 
@@ -1849,9 +1941,9 @@ class XArmAPI(object):
         """
         Get the digital value of the specified Controller GPIO
 
-        :param ionum: 0~7 or None(both 0~7), default is None
+        :param ionum: 0~15 or None(both 0~15), default is None
         :return: tuple((code, value or value list)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_cgpio_digital(ionum=ionum)
 
@@ -1860,7 +1952,7 @@ class XArmAPI(object):
         Get the analog value of the specified Controller GPIO
         :param ionum: 0 or 1 or None(both 0 and 1), default is None
         :return: tuple((code, value or value list)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_cgpio_analog(ionum=ionum)
 
@@ -1868,11 +1960,11 @@ class XArmAPI(object):
         """
         Set the digital value of the specified Controller GPIO
 
-        :param ionum: 0~7
+        :param ionum: 0~15
         :param value: value
         :param delay_sec: delay effective time from the current start, in seconds, default is None(effective immediately)
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_cgpio_digital(ionum=ionum, value=value, delay_sec=delay_sec)
 
@@ -1883,34 +1975,31 @@ class XArmAPI(object):
         :param ionum: 0 or 1
         :param value: value
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_cgpio_analog(ionum=ionum, value=value)
 
     def set_cgpio_digital_input_function(self, ionum, fun):
         """
         Set the digital input functional mode of the Controller GPIO
-        :param ionum: 0~7
+        :param ionum: 0~15
         :param fun: functional mode
             0: general input
             1: external emergency stop
-            2: reversed, protection reset
-            3: reversed, reduced mode
-            4: reversed, operating mode
-            5: reversed, three-state switching signal
+            2: protection reset
             11: offline task
             12: teaching mode
             13: reduced mode
             14: enable arm
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_cgpio_digital_input_function(ionum=ionum, fun=fun)
 
     def set_cgpio_digital_output_function(self, ionum, fun):
         """
         Set the digital output functional mode of the specified Controller GPIO
-        :param ionum: 0~7
+        :param ionum: 0~15
         :param fun: functionnal mode
             0: general output
             1: emergency stop
@@ -1920,11 +2009,11 @@ class XArmAPI(object):
             13: in collision
             14: in teaching
             15: in offline task
-            16: reduced mode
-            17: enable arm
+            16: in reduced mode
+            17: is enabled
             18: emergency stop is pressed
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_cgpio_digital_output_function(ionum=ionum, fun=fun)
 
@@ -1932,29 +2021,29 @@ class XArmAPI(object):
         """
         Get the state of the Controller GPIO
         :return: code, states
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             states: [...]
                 states[0]: contorller gpio module state
                     states[0] == 0: normal
-                    states[0] == 1：wrong
-                    states[0] == 6：communication failure
+                    states[0] == 1: wrong
+                    states[0] == 6: communication failure
                 states[1]: controller gpio module error code
                     states[1] == 0: normal
-                    states[1] != 0：error code
+                    states[1] != 0: error code
                 states[2]: digital input functional gpio state
-                    Note: digital-i-input functional gpio state = states[2] >> i & 0x01
+                    Note: digital-i-input functional gpio state = states[2] >> i & 0x0001
                 states[3]: digital input configuring gpio state
-                    Note: digital-i-input configuring gpio state = states[3] >> i & 0x01
+                    Note: digital-i-input configuring gpio state = states[3] >> i & 0x0001
                 states[4]: digital output functional gpio state
-                    Note: digital-i-output functional gpio state = states[4] >> i & 0x01
+                    Note: digital-i-output functional gpio state = states[4] >> i & 0x0001
                 states[5]: digital output configuring gpio state
-                    Note: digital-i-output configuring gpio state = states[5] >> i & 0x01
+                    Note: digital-i-output configuring gpio state = states[5] >> i & 0x0001
                 states[6]: analog-0 input value
                 states[7]: analog-1 input value
                 states[8]: analog-0 output value
                 states[9]: analog-1 output value
-                states[10]: digital input functional info, [digital-0-input-functional-mode, ... digital-7-input-functional-mode]
-                states[11]: digital output functional info, [digital-0-output-functional-mode, ... digital-7-output-functional-mode]
+                states[10]: digital input functional info, [digital-0-input-functional-mode, ... digital-15-input-functional-mode]
+                states[11]: digital output functional info, [digital-0-output-functional-mode, ... digital-15-output-functional-mode]
         """
         return self._arm.get_cgpio_state()
 
@@ -2240,7 +2329,7 @@ class XArmAPI(object):
         :param show: show the detail info if True
         :param lang: language, en/cn, default is en
         :return: tuple((code, servo_info_list)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_servo_debug_msg(show=show, lang=lang)
 
@@ -2263,7 +2352,7 @@ class XArmAPI(object):
         Get gripper version, only for debug
 
         :return: (code, version)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_gripper_version()
 
@@ -2273,7 +2362,7 @@ class XArmAPI(object):
 
         :param servo_id: servo id(1~7)
         :return: (code, version)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_servo_version(servo_id=servo_id)
 
@@ -2282,16 +2371,16 @@ class XArmAPI(object):
         Get tool gpio version, only for debug
 
         :return: (code, version)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_tgpio_version()
 
     def get_harmonic_type(self, servo_id=1):
         """
-        Get harmonic type, only for debu
+        Get harmonic type, only for debug
 
         :return: (code, type)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_harmonic_type(servo_id=servo_id)
 
@@ -2300,7 +2389,7 @@ class XArmAPI(object):
         Get harmonic types, only for debug
 
         :return: (code, types)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_hd_types()
 
@@ -2309,7 +2398,7 @@ class XArmAPI(object):
         Reset counter value
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_counter_reset()
 
@@ -2319,7 +2408,7 @@ class XArmAPI(object):
 
         :param val: reversed
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_counter_increase(val)
 
@@ -2332,7 +2421,7 @@ class XArmAPI(object):
         :param xyz: position xyz, as [x, y, z]
         :param fault_tolerance_radius: fault tolerance radius
         :return: code
-            code: See the API code documentation for details. 
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details. 
         """
         return self._arm.set_tgpio_digital_with_xyz(ionum, value, xyz, fault_tolerance_radius)
 
@@ -2340,12 +2429,12 @@ class XArmAPI(object):
         """
         Set the digital value of the specified Controller GPIO when the robot has reached the specified xyz position           
         
-        :param ionum: 0 ~ 7
+        :param ionum: 0 ~ 15
         :param value: value
         :param xyz: position xyz, as [x, y, z]
         :param fault_tolerance_radius: fault tolerance radius
         :return: code
-            code: See the API code documentation for details.  
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.  
         """
         return self._arm.set_cgpio_digital_with_xyz(ionum, value, xyz, fault_tolerance_radius)
 
@@ -2358,7 +2447,7 @@ class XArmAPI(object):
         :param xyz: position xyz, as [x, y, z]
         :param fault_tolerance_radius: fault tolerance radius
         :return: code
-            code: See the API code documentation for details.  
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.  
         """
         return self._arm.set_cgpio_analog_with_xyz(ionum, value, xyz, fault_tolerance_radius)
 
@@ -2368,7 +2457,7 @@ class XArmAPI(object):
         
         :param on_off: True/False
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.config_io_reset_when_stop(1, on_off)
 
@@ -2378,12 +2467,12 @@ class XArmAPI(object):
 
         :param on_off: True/False
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.config_io_reset_when_stop(0, on_off)
 
     def set_position_aa(self, axis_angle_pose, speed=None, mvacc=None, mvtime=None,
-                        is_radian=None, is_tool_coord=False, relative=False, wait=False, timeout=None, **kwargs):
+                        is_radian=None, is_tool_coord=False, relative=False, wait=False, timeout=None, radius=None, **kwargs):
         """
         Set the pose represented by the axis angle pose
         
@@ -2392,16 +2481,35 @@ class XArmAPI(object):
         :param mvacc: move acceleration (mm/s^2, rad/s^2), default is self.last_used_tcp_acc
         :param mvtime: 0, reserved 
         :param is_radian: the rx/ry/rz of axis_angle_pose in radians or not, default is self.default_is_radian
-        :param is_tool_coord: is tool coordinate or not
+        :param is_tool_coord: is tool coordinate or not, if it is True, the relative parameter is no longer valid
         :param relative: relative move or not
         :param wait: whether to wait for the arm to complete, default is False
         :param timeout: maximum waiting time(unit: second), default is None(no timeout), only valid if wait is True
+        :param radius: move radius, if radius is None or radius less than 0, will MoveLineAA, else MoveArcLineAA
+            only available if firmware_version >= 1.11.100
+            MoveLineAA: Linear motion
+                ex: code = arm.set_position_aa(..., radius=None)
+            MoveArcLineAA: Linear arc motion with interpolation
+                ex: code = arm.set_position_aa(..., radius=0)
+                Note: Need to set radius>=0
+        :param kwargs: extra parameters
+            :param motion_type: motion planning type, default is 0
+                motion_type == 0: default, linear planning
+                motion_type == 1: prioritize linear planning, and turn to IK for joint planning when linear planning is not possible
+                motion_type == 2: direct transfer to IK using joint planning
+                Note: 
+                    1. only available if firmware_version >= 1.11.100
+                    2. when motion_type is 1 or 2, linear motion cannot be guaranteed
+                    3. once IK is transferred to joint planning, the given Cartesian velocity and acceleration are converted into joint velocity and acceleration according to the percentage
+                        speed = speed / max_tcp_speed * max_joint_speed
+                        mvacc = mvacc / max_tcp_acc * max_joint_acc
+                    4. if there is no suitable IK, a C40 error will be triggered
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_position_aa(axis_angle_pose, speed=speed, mvacc=mvacc, mvtime=mvtime,
                                          is_radian=is_radian, is_tool_coord=is_tool_coord, relative=relative,
-                                         wait=wait, timeout=timeout, **kwargs)
+                                         wait=wait, timeout=timeout, radius=radius, **kwargs)
 
     def set_servo_cartesian_aa(self, axis_angle_pose, speed=None, mvacc=None, is_radian=None, is_tool_coord=False, relative=False, **kwargs):
         """
@@ -2416,7 +2524,7 @@ class XArmAPI(object):
         :param is_tool_coord: is tool coordinate or not
         :param relative: relative move or not
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
 
         return self._arm.set_servo_cartesian_aa(axis_angle_pose, speed=speed, mvacc=mvacc, is_radian=is_radian,
@@ -2432,7 +2540,7 @@ class XArmAPI(object):
         :param orient_type_out: notation of output attitude, 0 is RPY (default), 1 is axis angle
         :param is_radian: the roll/rx/pitch/ry/yaw/rz of pose1/pose2/return_pose is radian or not
         :return: tuple((code, pose)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             pose: [x(mm), y(mm), z(mm), roll/rx(rad or °), pitch/ry(rad or °), yaw/rz(rad or °)]
         """
         return self._arm.get_pose_offset(pose1, pose2, orient_type_in=orient_type_in, orient_type_out=orient_type_out,
@@ -2444,7 +2552,7 @@ class XArmAPI(object):
         
         :param is_radian: the returned value (only rx/ry/rz) is in radians or not, default is self.default_is_radian
         :return: tuple((code, [x, y, z, rx, ry, rz])), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_position_aa(is_radian=is_radian)
 
@@ -2453,28 +2561,29 @@ class XArmAPI(object):
         Get joints torque
         
         :return: tuple((code, joints_torque))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             joints_torque: joints torque
         """
         return self._arm.get_joints_torque()
 
-    def set_joints_torque(self, joints_torque):
-        """
-        Set joints torque,
-            Warning: If necessary, please do not set it randomly, it may damage the robot arm
+    # This interface is no longer supported
+    # def set_joints_torque(self, joints_torque):
+    #     """
+    #     Set joints torque,
+    #         Warning: If necessary, please do not set it randomly, it may damage the robot arm
 
-        :param joints_torque: 
-        :return: code
-            code: See the API code documentation for details.
-        """
-        return self._arm.set_joints_torque(joints_torque)
+    #     :param joints_torque: 
+    #     :return: code
+    #         code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+    #     """
+    #     return self._arm.set_joints_torque(joints_torque)
 
     def get_safe_level(self):
         """
         Get safe level
         
         :return: tuple((code, safe_level))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             safe_level: safe level
         """
         return self._arm.get_safe_level()
@@ -2485,7 +2594,7 @@ class XArmAPI(object):
 
         :param level: safe level, default is 4
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_safe_level(level=level)
 
@@ -2496,13 +2605,55 @@ class XArmAPI(object):
         :param timeout: seconds
         """
         return self._arm.set_timeout(timeout)
+    
+    def set_baud_checkset_enable(self, enable):
+        """
+        Enable auto checkset the baudrate of the end IO board or not
+        Note:
+            only available in the API of gripper/bio/robotiq/linear_track.
+            
+        :param enable: True/False
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_baud_checkset_enable(enable)
+
+    def set_checkset_default_baud(self, type_, baud):
+        """
+        Set the checkset baud value
+        
+        :param type_: checkset type
+            1: xarm gripper
+            2: bio gripper
+            3: robotiq gripper
+            4: linear track
+        :param baud: checkset baud value, less than or equal to 0 means disable checkset
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_checkset_default_baud(type_, baud)
+
+    def get_checkset_default_baud(self, type_):
+        """
+        Get the checkset baud value
+
+        :param type_: checkset type
+            1: xarm gripper
+            2: bio gripper
+            3: robotiq gripper
+            4: linear track
+        :return: tuple((code, baud))
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            baud: the checkset baud value
+        """
+        return self._arm.get_checkset_default_baud(type_)
 
     def robotiq_reset(self):
         """
         Reset the robotiq gripper (clear previous activation if any)
         
         :return: tuple((code, robotiq_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             robotiq_response: See the robotiq documentation
         """
         return self._arm.robotiq_reset()
@@ -2515,7 +2666,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 3, only available if wait=True
         
         :return: tuple((code, robotiq_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             robotiq_response: See the robotiq documentation 
         """
         return self._arm.robotiq_set_activate(wait=wait, timeout=timeout)
@@ -2531,7 +2682,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 5, only available if wait=True
         
         :return: tuple((code, robotiq_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             robotiq_response: See the robotiq documentation 
         """
         return self._arm.robotiq_set_position(pos, speed=speed, force=force, wait=wait, timeout=timeout, **kwargs)
@@ -2546,7 +2697,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 5, only available if wait=True
         
         :return: tuple((code, robotiq_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             robotiq_response: See the robotiq documentation 
         """
         return self._arm.robotiq_open(speed=speed, force=force, wait=wait, timeout=timeout, **kwargs)
@@ -2561,7 +2712,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 3, only available if wait=True
         
         :return: tuple((code, robotiq_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             robotiq_response: See the robotiq documentation
         """
         return self._arm.robotiq_close(speed=speed, force=force, wait=wait, timeout=timeout, **kwargs)
@@ -2580,7 +2731,7 @@ class XArmAPI(object):
                 register 0x07D1: Register FAULT STATUS and register POSITION REQUEST ECHO
                 register 0x07D2: Register POSITION and register CURRENT
         :return: tuple((code, robotiq_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             robotiq_response: See the robotiq documentation
         """
         return self._arm.robotiq_get_status(number_of_registers=number_of_registers)
@@ -2619,7 +2770,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 3, only available if wait=True
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_bio_gripper_enable(enable, wait=wait, timeout=timeout)
 
@@ -2630,7 +2781,7 @@ class XArmAPI(object):
         :param speed: speed
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_bio_gripper_speed(speed)
 
@@ -2643,7 +2794,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 5, only available if wait=True
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.open_bio_gripper(speed=speed, wait=wait, timeout=timeout, **kwargs)
 
@@ -2656,7 +2807,7 @@ class XArmAPI(object):
         :param timeout: maximum waiting time(unit: second), default is 5, only available if wait=True
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.close_bio_gripper(speed=speed, wait=wait, timeout=timeout, **kwargs)
 
@@ -2665,7 +2816,7 @@ class XArmAPI(object):
         Get the status of the bio gripper
         
         :return: tuple((code, status))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status: status
                 status & 0x03 == 0: stop
                 status & 0x03 == 1: motion
@@ -2682,8 +2833,8 @@ class XArmAPI(object):
         Get the error code of the bio gripper
         
         :return: tuple((code, error_code))
-            code: See the API code documentation for details.
-            error_code: See Chapter 7 of the xArm User Manual for details. 
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            error_code: See the [Bio Gripper Error Code Documentation](./xarm_api_code.md#bio-gripper-error-code) for details. 
         """
         return self._arm.get_bio_gripper_error()
 
@@ -2692,20 +2843,22 @@ class XArmAPI(object):
         Clean the error code of the bio gripper
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.clean_bio_gripper_error()
 
-    def set_tgpio_modbus_timeout(self, timeout):
+    def set_tgpio_modbus_timeout(self, timeout, is_transparent_transmission=False, **kwargs):
         """
         Set the modbus timeout of the tool gpio
         
-        :param timeout: timeout, seconds
+        :param timeout: timeout, milliseconds
+        :param is_transparent_transmission: whether the set timeout is the timeout of transparent transmission
+            Note: only available if firmware_version >= 1.11.0
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
-        return self._arm.set_tgpio_modbus_timeout(timeout)
+        return self._arm.set_tgpio_modbus_timeout(timeout, is_transparent_transmission=is_transparent_transmission, **kwargs)
 
     def set_tgpio_modbus_baudrate(self, baud):
         """
@@ -2714,7 +2867,7 @@ class XArmAPI(object):
         :param baud: 4800/9600/19200/38400/57600/115200/230400/460800/921600/1000000/1500000/2000000/2500000
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_tgpio_modbus_baudrate(baud)
 
@@ -2723,23 +2876,42 @@ class XArmAPI(object):
         Get the modbus baudrate of the tool gpio
 
         :return: tuple((code, baudrate)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             baudrate: the modbus baudrate of the tool gpio
         """
         return self._arm.get_tgpio_modbus_baudrate()
+        
+    def set_control_modbus_baudrate(self, baud):
+        """
+        Set the modbus baudrate of the control box
 
-    def getset_tgpio_modbus_data(self, datas, min_res_len=0):
+        :param baud: 4800/9600/19200/38400/57600/115200/230400/460800/921600/1000000/1500000/2000000/2500000
+
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_control_modbus_baudrate(baud)
+
+    def getset_tgpio_modbus_data(self, datas, min_res_len=0, host_id=9, is_transparent_transmission=False, use_503_port=False, **kwargs):
         """
         Send the modbus data to the tool gpio
         
         :param datas: data_list
         :param min_res_len: the minimum length of modbus response data. Used to check the data length, if not specified, no check
-        
+        :param host_id: host_id, default is 9 (TGPIO_HOST_ID)
+            9: END RS485
+            10: CONTROLLER RS485
+        :param is_transparent_transmission: whether to choose transparent transmission, default is False
+            Note: only available if firmware_version >= 1.11.0
+        :param use_503_port: whether to use port 503 for communication, default is False
+            Note: if it is True, it will connect to 503 port for communication when it is used for the first time, which is generally only useful for transparent transmission.
+            Note: only available if firmware_version >= 1.11.0
+
         :return: tuple((code, modbus_response))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             modbus_response: modbus response data
         """
-        return self._arm.getset_tgpio_modbus_data(datas, min_res_len=min_res_len)
+        return self._arm.getset_tgpio_modbus_data(datas, min_res_len=min_res_len, host_id=host_id, is_transparent_transmission=is_transparent_transmission, use_503_port=use_503_port, **kwargs)
 
     def set_report_tau_or_i(self, tau_or_i=0):
         """
@@ -2750,7 +2922,7 @@ class XArmAPI(object):
             1: electric current
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_report_tau_or_i(tau_or_i=tau_or_i)
 
@@ -2759,7 +2931,7 @@ class XArmAPI(object):
         Get the reported torque or electric current
         
         :return: tuple((code, tau_or_i))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             tau_or_i: 
                 0: torque
                 1: electric current
@@ -2773,7 +2945,7 @@ class XArmAPI(object):
         :param on_off: enable or not
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_self_collision_detection(on_off)
 
@@ -2800,7 +2972,7 @@ class XArmAPI(object):
         :param args: additional parameters
         :param kwargs: additional parameters
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_collision_tool_model(tool_type, *args, **kwargs)
 
@@ -2810,7 +2982,7 @@ class XArmAPI(object):
         
         :param on_off: True/False
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_simulation_robot(on_off)
 
@@ -2829,7 +3001,7 @@ class XArmAPI(object):
             duration == 0: Always effective, will not stop automatically
             duration < 0: default value, only used to be compatible with the old protocol, equivalent to 0
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.vc_set_joint_velocity(speeds, is_radian=is_radian, is_sync=is_sync, duration=duration, **kwargs)
 
@@ -2848,7 +3020,7 @@ class XArmAPI(object):
             duration == 0: Always effective, will not stop automatically
             duration < 0: default value, only used to be compatible with the old protocol, equivalent to 0
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.vc_set_cartesian_velocity(speeds, is_radian=is_radian, is_tool_coord=is_tool_coord, duration=duration, **kwargs)
 
@@ -2861,7 +3033,7 @@ class XArmAPI(object):
         :param four_points: a list of four teaching coordinate positions [x, y, z, roll, pitch, yaw]
         :param is_radian: the roll/pitch/yaw value of the each point in radians or not, default is self.default_is_radian
         :return: tuple((code, xyz_offset)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             xyz_offset: calculated xyz(mm) TCP offset, [x, y, z] 
         """
         return self._arm.calibrate_tcp_coordinate_offset(four_points, is_radian=is_radian)
@@ -2877,7 +3049,7 @@ class XArmAPI(object):
         :param input_is_radian: the roll/pitch/yaw value of rpy_be and rpy_bt in radians or not, default is self.default_is_radian
         :param return_is_radian: the roll/pitch/yaw value of result in radians or not, default is self.default_is_radian
         :return: tuple((code, rpy_offset)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             rpy_offset: calculated rpy TCP offset, [roll, pitch, yaw]
         """
         return self._arm.calibrate_tcp_orientation_offset(rpy_be, rpy_bt, input_is_radian=input_is_radian, return_is_radian=return_is_radian)
@@ -2898,7 +3070,7 @@ class XArmAPI(object):
         :param input_is_radian: the roll/pitch/yaw value of the each point in radians or not, default is self.default_is_radian
         :param return_is_radian: the roll/pitch/yaw value of result in radians or not, default is self.default_is_radian
         :return: tuple((code, rpy_offset)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             rpy_offset: calculated rpy user offset, [roll, pitch, yaw]
         """
         return self._arm.calibrate_user_orientation_offset(three_points, mode=mode, trust_ind=trust_ind, input_is_radian=input_is_radian, return_is_radian=return_is_radian)
@@ -2913,7 +3085,7 @@ class XArmAPI(object):
         :param pos_b_uorg: the position of the teaching point in the base coordinate system [x, y, z], if the arm cannot reach the target position, the user can manually input the position of the target in the base coordinate.
         :param is_radian: the roll/pitch/yaw value of rpy_ub in radians or not, default is self.default_is_radian
         :return: tuple((code, xyz_offset)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             xyz_offset: calculated xyz(mm) user offset, [x, y, z] 
         """
         return self._arm.calibrate_user_coordinate_offset(rpy_ub, pos_b_uorg, is_radian=is_radian)
@@ -2924,7 +3096,7 @@ class XArmAPI(object):
 
         :param board_id: int
         :return: : (code, version)
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_base_board_version(board_id)
 
@@ -2942,7 +3114,7 @@ class XArmAPI(object):
         :param B: damping coefficient. invalid.
             Note: the value is set to 2*sqrt(M*K) in controller.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_impedance(coord, c_axis, M, K, B, **kwargs)
 
@@ -2958,7 +3130,7 @@ class XArmAPI(object):
         :param B: damping coefficient. invalid.
             Note: the value is set to 2*sqrt(M*K) in controller.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_impedance_mbk(M, K, B, **kwargs)
 
@@ -2972,7 +3144,7 @@ class XArmAPI(object):
         :param coord: task frame. 0: base frame. 1: tool frame.
         :param c_axis: a 6d vector of 0s and 1s. 1 means that robot will be impedance in the corresponding axis of the task frame.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_impedance_config(coord, c_axis)
 
@@ -2988,7 +3160,7 @@ class XArmAPI(object):
         :param f_ref:  the forces/torques the robot will apply to its environment. The robot adjusts its position along/about compliant axis in order to achieve the specified force/torque.
         :param limits:  for compliant axes, these values are the maximum allowed tcp speed along/about the axis.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.config_force_control(coord, c_axis, f_ref, limits, **kwargs)
 
@@ -3004,7 +3176,7 @@ class XArmAPI(object):
         :param kd: differential gain.
         :param xe_limit: 6d vector. for compliant axes, these values are the maximum allowed tcp speed along/about the axis. mm/s
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_force_control_pid(kp, ki, kd, xe_limit, **kwargs)
 
@@ -3016,7 +3188,7 @@ class XArmAPI(object):
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
 
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.ft_sensor_set_zero()
 
@@ -3026,10 +3198,11 @@ class XArmAPI(object):
         Note:
             1. only available if firmware_version >= 1.8.3
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
+            3. starting from SDK v1.11.0, the centroid unit is millimeters (originally meters)
 
         :return: tuple((code, load)) only when code is 0, the returned result is correct.
-            code:  See the API code documentation for details.
-            load:  [mass，x_centroid，y_centroid，z_centroid，Fx_offset，Fy_offset，Fz_offset，Tx_offset，Ty_offset，Tz_ffset]
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            load:  [mass(kg), x_centroid(mm), y_centroid(mm), z_centroid(mm), Fx_offset, Fy_offset, Fz_offset, Tx_offset, Ty_offset, Tz_ffset]
         """
         return self._arm.ft_sensor_iden_load()
 
@@ -3039,12 +3212,13 @@ class XArmAPI(object):
         Note:
             1. only available if firmware_version >= 1.8.3
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
+            3. starting from SDK v1.11.0, the centroid unit is millimeters (originally meters)
 
-        :param iden_result_list:  [mass，x_centroid，y_centroid，z_centroid，Fx_offset，Fy_offset，Fz_offset，Tx_offset，Ty_offset，Tz_ffset]
+        :param iden_result_list:  [mass(kg), x_centroid(mm), y_centroid(mm), z_centroid(mm), Fx_offset, Fy_offset, Fz_offset, Tx_offset, Ty_offset, Tz_ffset]
         :param association_setting_tcp_load: whether to convert the parameter to the corresponding tcp load and set, default is False
             Note: If True, the value of tcp load will be modified
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.ft_sensor_cali_load(iden_result_list, association_setting_tcp_load=association_setting_tcp_load, **kwargs)
 
@@ -3057,7 +3231,7 @@ class XArmAPI(object):
 
         :param on_off: enable or disable F/T data sampling.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.ft_sensor_enable(on_off)
 
@@ -3073,7 +3247,7 @@ class XArmAPI(object):
             1: impendance control
             2: force control
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.ft_sensor_app_set(app_code)
 
@@ -3085,7 +3259,7 @@ class XArmAPI(object):
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
 
         :return: tuple((code, app_code))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             app_code: 
                 0: non-force mode
                 1: impedance control mode
@@ -3101,13 +3275,13 @@ class XArmAPI(object):
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
 
         :return: tuple((code, exe_ft))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             ft_data: only when code is 0, the returned result is correct.
                 Note: The external force detection value of the Six-axis Force Torque Sensor after filtering, load and offset compensation
         """
         return self._arm.get_ft_sensor_data()
 
-    def get_ft_senfor_config(self):
+    def get_ft_sensor_config(self):
         """
         Get the config of the Six-axis Force Torque Sensor
         Note:
@@ -3115,7 +3289,7 @@ class XArmAPI(object):
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
             
         :return: tuple((code, config))
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             config: [...], the config of the Six-axis Force Torque Sensor, only when code is 0, the returned result is correct.
                 [0] ft_app_status: force mode
                     0: non-force mode
@@ -3127,8 +3301,8 @@ class XArmAPI(object):
                 [4] ft_freq: ft sensor frequency
                 [5] ft_mass: load mass
                 [6] ft_dir_bias: reversed
-                [7] ft_centroid: [x_centroid，y_centroid，z_centroid]
-                [8] ft_zero: [Fx_offset，Fy_offset，Fz_offset，Tx_offset，Ty_offset，Tz_ffset]
+                [7] ft_centroid: [x_centroid, y_centroid, z_centroid]
+                [8] ft_zero: [Fx_offset, Fy_offset, Fz_offset, Tx_offset, Ty_offset, Tz_ffset]
                 [9] imp_coord: task frame of impendance control mode.
                     0: base frame.
                     1: tool frame.
@@ -3147,7 +3321,7 @@ class XArmAPI(object):
                 [20] kd: differential gain.
                 [21] xe_limit: 6d vector. for compliant axes, these values are the maximum allowed tcp speed along/about the axis. mm/s
         """
-        return self._arm.get_ft_senfor_config()
+        return self._arm.get_ft_sensor_config()
 
     def get_ft_sensor_error(self):
         """
@@ -3157,22 +3331,24 @@ class XArmAPI(object):
             2. the Six-axis Force Torque Sensor is required (the third party is not currently supported)
         
         :return: tuple((code, error))
-            code: See the API code documentation for details.
-            error: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            error: See the [Six-axis Force Torque Sensor Error Code Documentation](./xarm_api_code.md#six-axis-force-torque-sensor-error-code) for details.
         """
         return self._arm.get_ft_sensor_error()
 
-    def iden_tcp_load(self):
+    def iden_tcp_load(self, estimated_mass=0):
         """
         Identification the tcp load with current
         Note:
             1. only available if firmware_version >= 1.8.0
         
+        :param estimated_mass: estimated mass
+            Note: this parameter is only available on the lite6 model manipulator, and this parameter must be specified for the lite6 model manipulator
         :return: tuple((code, load)) only when code is 0, the returned result is correct.
-            code:  See the API code documentation for details.
-            load:  [mass，x_centroid，y_centroid，z_centroid]
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            load:  [mass, x_centroid, y_centroid, z_centroid]
         """
-        return self._arm.iden_tcp_load()
+        return self._arm.iden_tcp_load(estimated_mass)
 
     def get_linear_track_registers(self, **kwargs):
         """
@@ -3181,7 +3357,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
         
         :return: tuple((code, status)) only when code is 0, the returned result is correct.
-            code:  See the API code documentation for details.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status: status, like
                 {
                     'pos': 0,
@@ -3202,7 +3378,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
 
         :return: tuple((code, position)) only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             position: position
         """
         return self._arm.get_linear_track_pos()
@@ -3214,7 +3390,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
 
         :return: tuple((code, status)) only when code is 0, the returned result is correct.
-            code:  See the API code documentation for details.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status: status
                 status & 0x00: motion finish
                 status & 0x01: in motion
@@ -3229,8 +3405,8 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
 
         :return: tuple((code, error)) only when code is 0, the returned result is correct.
-            code:  See the API code documentation for details.
-            error: error code
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            error: See the [Linear Motor Error Code Documentation](./xarm_api_code.md#linear-motor-error-code) for details.
         """
         return self._arm.get_linear_track_error()
 
@@ -3241,7 +3417,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
 
         :return: tuple((code, status)) only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status: 
                 0: linear track is not enabled
                 1: linear track is enabled
@@ -3255,7 +3431,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
         
         :return: tuple((code, status)) only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             status: 
                 0: linear track is not on zero
                 1: linear track is on zero
@@ -3269,7 +3445,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
 
         :return: tuple((code, sci1)) only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.get_linear_track_sci()
 
@@ -3280,7 +3456,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
 
         :return: tuple((code, sco)) only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             sco: [sco0, sco1]
         """
         return self._arm.get_linear_track_sco()
@@ -3292,7 +3468,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.clean_linear_track_error()
 
@@ -3304,7 +3480,7 @@ class XArmAPI(object):
 
         :param enable: enable or not
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_linear_track_enable(enable)
 
@@ -3316,7 +3492,7 @@ class XArmAPI(object):
         
         :param speed: Integer between 1 and 1000mm/s.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_linear_track_speed(speed)
 
@@ -3332,7 +3508,7 @@ class XArmAPI(object):
         :param kwargs:
             auto_enable: enable after back to origin or not, default is True
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_linear_track_back_origin(wait=wait, **kwargs)
 
@@ -3350,7 +3526,7 @@ class XArmAPI(object):
         :param wait: wait to motion finish or not, default is True
         :param timeout: wait timeout, seconds, default is 100s.
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_linear_track_pos(pos, speed=speed, wait=wait, timeout=timeout, **kwargs)
 
@@ -3361,7 +3537,7 @@ class XArmAPI(object):
             1. only available if firmware_version >= 1.8.0
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._arm.set_linear_track_stop()
 
@@ -3372,7 +3548,7 @@ class XArmAPI(object):
         :param name: blockly app name
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._studio.delete_blockly_app(name)
 
@@ -3383,7 +3559,7 @@ class XArmAPI(object):
         :param name: trajectory name
         
         :return: code
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
         """
         return self._studio.delete_trajectory(name)
 
@@ -3392,7 +3568,7 @@ class XArmAPI(object):
         Get the initial point from studio
         
         :return: tuple((code, point)), only when code is 0, the returned result is correct.
-            code: See the API code documentation for details.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
             point: initial point, [J1, J2, ..., J7]
         """
         return self._studio.get_initial_point()
@@ -3404,6 +3580,604 @@ class XArmAPI(object):
         :param point: initial point, [J1, J2, ..., J7]
         
         :return: code
-            code: See the API code documentation for details. 
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details. 
         """
         return self._studio.set_initial_point(point)
+
+    def get_mount_direction(self):
+        """
+        Get the mount degrees from studio
+
+        :return: tuple((code, degrees)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            degrees: mount degrees, [tilt angle, rotate angle]
+        """
+        return self._studio.get_mount_direction()
+
+    def set_cartesian_velo_continuous(self, on_off):
+        """
+        Set cartesian motion velocity continuous
+        Note:
+            1. only available if firmware_version >= 1.9.0
+        
+        :param on_off: continuous or not, True means continuous, default is False
+        
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_cartesian_velo_continuous(on_off)
+
+    def set_allow_approx_motion(self, on_off):
+        """
+        Settings allow to avoid overspeed near some singularities using approximate solutions
+        Note:
+            1. only available if firmware_version >= 1.9.0
+
+        :param on_off: allow or not, True means allow, default is False
+
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_allow_approx_motion(on_off)
+
+    def get_allow_approx_motion(self):
+        """
+        Obtain whether to enable approximate solutions to avoid certain singularities
+        Note:
+            1. only available if firmware_version >= 1.9.0
+
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.get_allow_approx_motion()
+
+    def get_joint_states(self, is_radian=None, num=3):
+        """
+        Get the joint states
+        Note:
+            1. only available if firmware_version >= 1.9.0
+
+        :param is_radian: the returned value(position and velocity) is in radians or not, default is self.default_is_radian
+        :return: tuple((code, [position, velocity, effort])), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            position: the angles of joints, like [angle-1, ..., angle-7]
+            velocity: the velocities of joints, like [velo-1, ..., velo-7]
+            effort: the efforts of joints, like [effort-1, ..., effort-7]
+        """
+        return self._arm.get_joint_states(is_radian=is_radian, num=num)
+
+    def iden_joint_friction(self, sn=None):
+        """
+        Identification the friction
+        Note:
+            1. only available if firmware_version >= 1.9.0
+        
+        :param sn: sn value
+        :return: tuple((code, result)) only when code is 0, the returned result is correct.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            result: 
+                0: success
+                -1: failure
+        """
+        return self._arm.iden_joint_friction(sn)
+
+    def set_only_check_type(self, only_check_type=0):
+        """
+        Set the motion process detection type (valid for all motion interfaces of the current SDK instance)
+
+        Note:
+            1. only available if firmware_version >= 1.11.100
+            2. This interface is a global configuration item of the current SDK, and affects all motion-related interfaces
+            3. Generally, you only need to call when you don't want to move the robotic arm and only check whether some paths will have self-collision/angle-limit/cartesian-limit/overspeed.
+            4. Currently only self-collision/angle-limit/cartesian-limit/overspeed are detected
+            5. If only_check_type is set to be greater than 0, and the return value of calling the motion interface is not 0, you can view arm.only_check_result to view the specific error code
+        
+        Example: (Common scenarios, here is an example of the set_position interface)
+            1. Check whether the process from point A to point B is normal (no self-collision and overspeed triggered)
+                1.1 Move to point A
+                    arm.set_only_check_type(0)
+                    code = arm.set_position(A)
+                1.2 Check if the process from point A to point B is normal (no self-collision and overspeed triggered)
+                    arm.set_only_check_type(1)
+                    code = arm.set_position(B)
+                    # If code is not equal to 0, it means that the path does not pass. You can check the specific error code through arm.only_check_result
+                    arm.set_only_check_type(0)
+                    
+            2. Check whether the process from point A to point B, C, and D to point E is normal (no self-collision and overspeed are triggered)
+                2.1 Move to point A
+                    arm.set_only_check_type(0)
+                    code = arm.set_position(A)
+                2.2 Check whether the process of point A passing through points B, C, D to point E is normal (no self-collision and overspeed are triggered)
+                    arm.set_only_check_type(3)
+                    code = arm.set_position(B)
+                    # If code is not equal to 0, it means that the path does not pass. You can check the specific error code through arm.only_check_result
+                    code = arm.set_position(C)
+                    # If code is not equal to 0, it means that the path does not pass. You can check the specific error code through arm.only_check_result
+                    code = arm.set_position(D)
+                    # If code is not equal to 0, it means that the path does not pass. You can check the specific error code through arm.only_check_result
+                    code = arm.set_position(E)
+                    # If code is not equal to 0, it means that the path does not pass. You can check the specific error code through arm.only_check_result
+                    arm.set_only_check_type(0)
+
+        :param only_check_type: Motion Detection Type
+            only_check_type == 0: Restore the original function of the motion interface, it will move, the default is 0
+            only_check_type == 1: Only check the self-collision without moving, take the actual state of the manipulator as the initial planned path, and check whether the path has self-collision (the intermediate state will be updated at this time)
+            only_check_type == 2: Only check the self-collision without moving, use the intermediate state as the starting planning path, check whether the path has self-collision (the intermediate state will be updated at this time), and restore the intermediate state to the actual state after the end
+            only_check_type == 3: Only check the self-collision without moving, use the intermediate state as the starting planning path, and check whether the path has self-collision (the intermediate state will be updated at this time)
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_only_check_type(only_check_type)
+
+    def open_lite6_gripper(self):
+        """
+        Open the gripper of Lite6 series robotic arms
+        Note:
+            1. only available if firmware_version >= 1.10.0
+            2. this API can only be used on Lite6 series robotic arms
+
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details. 
+        """
+        return self._arm.open_lite6_gripper()
+
+    def close_lite6_gripper(self):
+        """
+        Close the gripper of Lite6 series robotic arms
+        Note:
+            1. only available if firmware_version >= 1.10.0
+            2. this API can only be used on Lite6 series robotic arms
+
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.close_lite6_gripper()
+
+    def stop_lite6_gripper(self):
+        """
+        Stop the gripper of Lite6 series robotic arms
+        Note:
+            1. only available if firmware_version >= 1.10.0
+            2. this API can only be used on Lite6 series robotic arms
+
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.stop_lite6_gripper()
+
+    def get_dh_params(self):
+        """
+        Get the DH parameters
+        Note:
+            1. only available if firmware_version >= 2.0.0
+        
+        :return: tuple((code, dh_params)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            dh_params: DH parameters
+                dh_params[0:4]: DH parameters of Joint-1
+                dh_params[4:8]: DH parameters of Joint-2
+                ...
+                dh_params[24:28]: DH parameters of Joint-7
+        """
+        return self._arm.get_dh_params()
+    
+    def set_dh_params(self, dh_params, flag=0):
+        """
+        Set the DH parameters
+        Note:
+            1. only available if firmware_version >= 2.0.0
+            2. this interface is only provided for users who need to use external DH parameters, ordinary users should not try to modify DH parameters.
+        
+        :param dh_params: DH parameters
+        :param flag: 
+            0: Use the set DH parameters, but do not write to the configuration file
+            1: Use the set DH parameters and write to the configuration file
+            2: Use the set DH parameters and delete the DH parameters of the configuration file
+            3: Use the default DH parameters, but will not delete the DH parameters of the configuration file
+            4: Use the default DH parameters and delete the DH parameters of the configuration file
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_dh_params(dh_params, flag)
+
+    def set_feedback_type(self, feedback_type):
+        """
+        Set the feedback type
+        Note:
+            1. only available if firmware_version >= 2.1.0
+            2. only works in position mode
+            3. the setting will only affect subsequent tasks and will not affect previously cached tasks
+            4. only valid for the current connection
+        
+        :param feedback_type:
+            0: disable feedback
+            1: feedback when the motion task starts executing
+            2: feedback when the motion task execution ends or motion task is discarded(usually when the distance is too close to be planned)
+            4: feedback when the non-motion task is triggered
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_feedback_type(feedback_type)
+
+    def register_feedback_callback(self, callback=None):
+        """
+        Register the callback of feedback
+        Note:
+            1. only available if firmware_version >= 2.1.0
+
+        :param callback:
+            callback data: bytes data
+                data[0:2]: transaction id, (Big-endian conversion to unsigned 16-bit integer data), command ID corresponding to the feedback, consistent with issued instructions
+                    Note: this can be used to distinguish which instruction the feedback belongs to
+                data[4:6]: feedback_length, feedback_length == len(data) - 6, (Big-endian conversion to unsigned 16-bit integer data)
+                data[8]: feedback type
+                    1: the motion task starts executing
+                    2: the motion task execution ends or motion task is discarded(usually when the distance is too close to be planned)
+                    4: the non-motion task is triggered
+                data[9]: feedback funcode, command code corresponding to feedback, consistent with issued instructions
+                    Note: this can be used to distinguish what instruction the feedback belongs to
+                data[10:12]: feedback taskid, (Big-endian conversion to unsigned 16-bit integer data)
+                data[12]: feedback code, execution status code, generally only meaningful when the feedback type is end, normally 0, 2 means discarded
+                data[13:21]: feedback us, (Big-endian conversion to unsigned 64-bit integer data), time when feedback triggers (microseconds)
+                    Note: this time is the corresponding controller system time when the feedback is triggered
+        :return: True/False
+        """
+        return self._arm.register_feedback_callback(callback=callback)
+
+    def release_feedback_callback(self, callback=None):
+        """
+        Release the callback of feedback
+        Note:
+            1. only available if firmware_version >= 2.1.0
+
+        :param callback:
+        :return: True/False
+        """
+        return self._arm.release_feedback_callback(callback=callback)
+    
+    def read_coil_bits(self, addr, quantity):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Read Coils (0x01)
+        
+        :param addr: the starting address of the register to be read
+        :param quantity: number of registers
+        :return: tuple((code, bits)) only when code is 0, the returned result is correct.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+                Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.read_coil_bits(addr, quantity)
+
+    def read_input_bits(self, addr, quantity):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Read Discrete Inputs (0x02)
+        
+        :param addr: the starting address of the register to be read
+        :param quantity: number of registers
+        :return: tuple((code, bits)) only when code is 0, the returned result is correct.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+                Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.read_input_bits(addr, quantity)
+    
+    def read_holding_registers(self, addr, quantity, is_signed=False):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Read Holding Registers (0x03)
+        
+        :param addr: the starting address of the register to be read
+        :param quantity: number of registers
+        :param is_signed: whether to convert the read register value into a signed form
+        :return: tuple((code, bits)) only when code is 0, the returned result is correct.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+                Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.read_holding_registers(addr, quantity, is_signed)
+    
+    def read_input_registers(self, addr, quantity, is_signed=False):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Read Input Registers (0x04)
+        
+        :param addr: the starting address of the register to be read
+        :param quantity: number of registers
+        :param is_signed: whether to convert the read register value into a signed form
+        :return: tuple((code, bits)) only when code is 0, the returned result is correct.
+            code:  See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+                Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.read_input_registers(addr, quantity, is_signed)
+    
+    def write_single_coil_bit(self, addr, bit_val):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Write Single Coil (0x05)
+        
+        :param addr: register address
+        :param bit_val: the value to write (0/1)
+        :return: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.write_single_coil_bit(addr, bit_val)
+    
+    def write_single_holding_register(self, addr, reg_val):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Write Single Holding Register (0x06)
+        
+        :param addr: register address
+        :param bit_val: the value to write
+        :return: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.write_single_holding_register(addr, reg_val)
+
+    def write_multiple_coil_bits(self, addr, bits):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Write Multiple Coils (0x0F)
+        
+        :param addr: the starting address of the register to be written
+        :param bits: array of values to write
+        :return: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.write_multiple_coil_bits(addr, bits)
+
+    def write_multiple_holding_registers(self, addr, regs):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Write Multiple Holding Registers (0x10)
+        
+        :param addr: the starting address of the register to be written
+        :param regs: array of values to write
+        :return: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.write_multiple_holding_registers(addr, regs)
+
+    def mask_write_holding_register(self, addr, and_mask, or_mask):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Mask Write Holding Register (0x16)
+        
+        :param addr: register address
+        :param and_mask: mask to be AND with
+        :param or_mask: mask to be OR with
+        :return: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.mask_write_holding_register(addr, and_mask, or_mask)
+
+    def write_and_read_holding_registers(self, r_addr, r_quantity, w_addr, w_regs, is_signed=False):
+        """
+        ([Standard Modbus TCP](../UF_ModbusTCP_Manual.md)) Write and Read Holding Registers (0x17)
+        
+        :param r_addr: the starting address of the register to be read
+        :param r_quantity: number of registers to read
+        :param w_addr: the starting address of the register to be written
+        :param w_regs: array of values to write
+        :param is_signed: whether to convert the read register value into a signed form
+        :return: tuple((code, regs)) only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+                Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.write_and_read_holding_registers(r_addr, r_quantity, w_addr, w_regs, is_signed)
+
+    def send_hex_cmd(self, datas, **kwargs):
+        """
+        Hexadecimal communication protocol instruction
+
+        :param datas: Hexadecimal data_list
+        :param timeout: timeout: wait timeout, seconds, default is 10s.
+        :return : Hexadecimal data_list or code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+                Note: code 129~144 means modbus tcp exception, the actual modbus tcp exception code is (code-0x80), refer to [Standard Modbus TCP](../UF_ModbusTCP_Manual.md)
+        """
+        return self._arm.send_hex_cmd(datas, **kwargs)
+    
+    def set_linear_spd_limit_factor(self, factor):
+        """
+        Set linear speed limit factor (default is 1.2)
+        Note:
+            1. only available if firmware_version >= 2.3.0
+            2. only available in mode 1
+
+        :param factor: speed limit factor
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_common_param(1, factor)
+
+    def set_cmd_mat_history_num(self, num):
+        """
+        Set cmd mat history num
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :param num: history num
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_common_param(2, num)
+
+    def set_fdb_mat_history_num(self, num):
+        """
+        Set fdb mat history num
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :param num: history num
+        :return: code
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+        """
+        return self._arm.set_common_param(3, num)
+
+    def get_linear_spd_limit_factor(self):
+        """
+        Get linear speed limit factor
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, factor)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            factor: linear speed limit factor
+        """
+        return self._arm.get_common_param(1)
+
+    def get_cmd_mat_history_num(self):
+        """
+        Get cmd mat history num
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, num)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            num: cmd mat history num
+        """
+        return self._arm.get_common_param(2)
+
+    def get_fdb_mat_history_num(self):
+        """
+        Get fdb mat history num
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, num)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            num: fdb mat history num
+        """
+        return self._arm.get_common_param(3)
+
+    def get_tgpio_modbus_timeout(self, is_transparent_transmission=False):
+        """
+        Get tgpio modbus timeout
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :param is_transparent_transmission: is transparent transmission or not
+        :return: tuple((code, timeout)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            timeout: timeout of the tgpio modbus, milliseconds
+        """
+        if is_transparent_transmission:
+            return self._arm.get_common_param(5)
+        else:
+            return self._arm.get_common_param(4)
+
+    def get_poe_status(self):
+        """
+        Get poe status
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, status)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            status: 1 means poe is valid, 0 means poe is invalid
+        """
+        return self._arm.get_common_info(1)
+
+    def get_iden_status(self):
+        """
+        Get iden status
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, status)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            status: 1 means in identifying, 0 means not in identifying
+        """
+        return self._arm.get_common_info(2)
+    
+    def get_c31_error_info(self):
+        """
+        Get collision error (C31) info
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, err_info)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_info: [servo_id, theoratival tau, actual tau]
+        """
+        return self._arm.get_common_info(101, return_val=False)
+
+    def get_c37_error_info(self, is_radian=None):
+        """
+        Get payload error (C37) info
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, err_info)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_info: [servo_id, angle]
+        """
+        ret = self._arm.get_common_info(102, return_val=False)
+        if ret[0] == 0 and len(ret) > 1 and len(ret[1]) > 1:
+            is_rad = self._is_radian if is_radian is None else is_radian
+            ret[1][1] = ret[1][1] if is_rad else math.degrees(ret[1][1])
+        return ret
+
+    def get_c23_error_info(self, is_radian=None):
+        """
+        Get joint angle limit error (C23) info
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, err_info)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_info: [(servo_id, angle), ...]
+        """
+        ret = self._arm.get_common_info(103, return_val=False)
+        if ret[0] == 0 and len(ret) > 1 and len(ret[1]) > 1:
+            is_rad = self._is_radian if is_radian is None else is_radian
+            err_info = []
+            bits = ret[1][0]
+            for i in range(self.axis):
+                if (bits >> i) & 0x01:
+                    err_info.append((i + 1, ret[1][i+1] if is_rad else math.degrees(ret[1][i+1])))
+            return 0, err_info
+            # ret[1][1] = ret[1][1] if is_rad else math.degrees(ret[1][1])
+        return ret
+    
+    def get_c24_error_info(self, is_radian=None):
+        """
+        Get joint speed limit error (C24) info
+        Note:
+            Only available if firmware_version >= 2.3.0
+
+        :return: tuple((code, err_info)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_info: [servo_id, speed]
+        """
+        ret = self._arm.get_common_info(104, return_val=False)
+        if ret[0] == 0 and len(ret) > 1 and len(ret[1]) > 1:
+            is_rad = self._is_radian if is_radian is None else is_radian
+            ret[1][1] = ret[1][1] if is_rad else math.degrees(ret[1][1])
+        return ret
+    
+    def get_c60_error_info(self):
+        """
+        Get linear speed limit error (C60) info
+        Note:
+            1. Only available if firmware_version >= 2.3.0
+            2. Only available in mode 1
+
+        :return: tuple((code, err_info)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_info: [max_linear_speed, curr_linear_speed]
+        """
+        return self._arm.get_common_info(105, return_val=False)
+    
+    def get_c38_error_info(self, is_radian=None):
+        """
+        Get joint hard angle limit error (C38) info
+        Note:
+            Only available if firmware_version >= 2.4.0
+
+        :return: tuple((code, err_info)), only when code is 0, the returned result is correct.
+            code: See the [API Code Documentation](./xarm_api_code.md#api-code) for details.
+            err_info: [(servo_id, angle), ...]
+        """
+        ret = self._arm.get_common_info(106, return_val=False)
+        if ret[0] == 0 and len(ret) > 1 and len(ret[1]) > 1:
+            is_rad = self._is_radian if is_radian is None else is_radian
+            err_info = []
+            bits = ret[1][0]
+            for i in range(self.axis):
+                if (bits >> i) & 0x01:
+                    err_info.append((i + 1, ret[1][i+1] if is_rad else math.degrees(ret[1][i+1])))
+            return 0, err_info
+            # ret[1][1] = ret[1][1] if is_rad else math.degrees(ret[1][1])
+        return ret

@@ -6,11 +6,11 @@ xArmIPAddress_right,192.168.1.240
 initialpos_right,300,-200,150
 initialrot_right,180,45,90
 
-motiveServerIPAddress,133.68.108.109
-motiveLocalIPAddress,133.68.108.109
+motiveServerIPAddress,133.68.108.51
+motiveLocalIPAddress,133.68.108.51
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
-frameRate,150
+frameRate,200
 
 bendingSensorPortParticipant1,9600
 bendingSensorPortParticipant2,9600
@@ -29,10 +29,10 @@ bendingSensorCom6,COM14
 isExportData,False
 dirPath,C:/Users/SANOLAB/Desktop/tsugumi/expertdata/tsugumi/21回目
 
-participantNum,1
+participantNum,2
 gripperNum,0
-otherRigidBodyNum,1
-robotNum,1
+otherRigidBodyNum,0
+robotNum,2
 
 weightListPos,1,0,0,0,0,0
 weightListRot,1,0,0,0,0,0

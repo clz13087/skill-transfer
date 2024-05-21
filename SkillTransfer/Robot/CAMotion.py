@@ -49,7 +49,7 @@ class CAMotion:
         self.customweightPosition = [0, 0, 0]
         self.before_sharedPosition = [0, 0, 0]
 
-    def participant2robot(self, pos: dict, rot: dict, weight: list):
+    def participant2robot(self, position: dict, rotation: dict, weight: list):
         # ----- numpy array to dict: position ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
@@ -67,7 +67,7 @@ class CAMotion:
 
         for i in range(self.participantNum):
             # ----- Position ----- #
-            diffPos = pos["participant" + str(i + 1)] - self.beforePositions["participant" + str(i + 1)]
+            diffPos = position["participant" + str(i + 1)] - self.beforePositions["participant" + str(i + 1)]
             weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
 
             if i % 2 == 0:
@@ -77,7 +77,7 @@ class CAMotion:
                 sharedPosition_right += weightedPos
 
             self.weightedPositions["participant" + str(i + 1)] = weightedPos
-            self.beforePositions["participant" + str(i + 1)] = pos["participant" + str(i + 1)]
+            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
 
             # ----- Rotation ----- #
             qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
@@ -86,7 +86,7 @@ class CAMotion:
                     [-qz, qw, qx, qy],
                     [qy, -qx, qw, qz],
                     [-qx, -qy, -qz, qw]])
-            currentRot = rot["participant" + str(i + 1)]
+            currentRot = rotation["participant" + str(i + 1)]
             diffRot = np.dot(np.linalg.inv(mat4x4), currentRot)
             diffRotEuler = self.Quaternion2Euler(np.array(diffRot))
 
@@ -107,7 +107,7 @@ class CAMotion:
                 sharedRotation_euler_right += self.Quaternion2Euler(weightedRot)
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
-            self.beforeRotations["participant" + str(i + 1)] = rot["participant" + str(i + 1)]
+            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
         self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)

@@ -9,8 +9,8 @@
 import os
 import math
 import time
+import uuid
 import warnings
-import threading
 from collections.abc import Iterable
 from ..core.config.x_config import XCONF
 from ..core.utils.log import logger
@@ -22,11 +22,14 @@ from .servo import Servo
 from .record import Record
 from .robotiq import RobotIQ
 from .ft_sensor import FtSensor
+from .modbus_tcp import ModbusTcp
 from .parse import GcodeParser
 from .code import APIState
-from .utils import xarm_is_connected, xarm_is_ready, xarm_is_pause, compare_version, xarm_wait_until_cmdnum_lt_max
+from .decorator import xarm_is_connected, xarm_is_ready, xarm_wait_until_not_pause, xarm_wait_until_cmdnum_lt_max
+from .utils import to_radian
 try:
-    from ..tools.blockly_tool import BlocklyTool
+    # from ..tools.blockly_tool import BlocklyTool
+    from ..tools.blockly import BlocklyTool
 except:
     print('import BlocklyTool module failed')
     BlocklyTool = None
@@ -34,7 +37,7 @@ except:
 gcode_p = GcodeParser()
 
 
-class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
+class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor, ModbusTcp):
 
     def __init__(self, port=None, is_radian=False, do_not_open=False, instance=None, **kwargs):
         super(XArm, self).__init__()
@@ -70,431 +73,431 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
                 return True
         return False
     
-    def _wait_first_sync(self, relative=False):
-        if not relative:
-            return 0
+    def __wait_sync(self):
         while not self._is_sync or self._need_sync:
             if not self.connected:
                 return APIState.NOT_CONNECTED
-            elif self.has_error:
-                return APIState.HAS_ERROR
-            elif not self.state_is_ready:
-                return APIState.NOT_READY
-            elif self.is_stop:
-                return APIState.EMERGENCY_STOP
-            time.sleep(0.05) 
+            # elif self.has_error:
+            #     return APIState.HAS_ERROR
+            # elif self.is_stop:
+            #     return APIState.NOT_READY
+            if self.has_error:
+                _, err_warn = self.get_err_warn_code()
+                if err_warn[0] != 0:
+                    return APIState.HAS_ERROR
+            if self.is_stop:
+                _, state = self.get_state()
+                if state >= 4:
+                    return APIState.NOT_READY
+            time.sleep(0.05)
         return 0
 
+    def __update_tcp_motion_params(self, speed, acc, mvtime, pose=None):
+        self._last_tcp_speed = speed
+        self._last_tcp_acc = acc
+        self._mvtime = mvtime
+        if pose is not None:
+            self._last_position = pose.copy()
+
+    def __update_joint_motion_params(self, speed, acc, mvtime, angles=None):
+        self._last_joint_speed = speed
+        self._last_joint_acc = acc
+        self._mvtime = mvtime
+        if angles is not None:
+            self._last_angles = angles.copy()
+
+    def __get_tcp_motion_params(self, speed=None, mvacc=None, mvtime=None, **kwargs):
+        speed = speed if speed is not None else kwargs.get('mvvelo', self._last_tcp_speed)
+        # spd = self._last_tcp_speed if speed is None else min(max(float(speed), self._min_tcp_speed), self._max_tcp_speed)
+        # acc = self._last_tcp_acc if mvacc is None else min(max(float(mvacc), self._min_tcp_acc), self._max_tcp_acc)
+        spd = self._last_tcp_speed if speed is None else min(max(float(speed), self._min_tcp_speed), 1000)
+        acc = self._last_tcp_acc if mvacc is None else min(max(float(mvacc), self._min_tcp_acc), 50000)
+        mvt = self._mvtime if mvtime is None else mvtime
+        return spd, acc, mvt
+
+    def __get_joint_motion_params(self, speed=None, mvacc=None, mvtime=None, is_radian=None, **kwargs):
+        is_radian = self._default_is_radian if is_radian is None else is_radian
+        speed = speed if speed is not None else kwargs.get('mvvelo', None)
+        speed = self._last_joint_speed if speed is None else to_radian(speed, is_radian)
+        mvacc = self._last_joint_acc if mvacc is None else to_radian(mvacc, is_radian)
+        # spd = min(max(float(speed), self._min_joint_speed), self._max_joint_speed)
+        # acc = min(max(float(mvacc), self._min_joint_acc), self._max_joint_acc)
+        spd = min(max(float(speed), self._min_joint_speed), math.pi)
+        acc = min(max(float(mvacc), self._min_joint_acc), 20)
+        mvt = self._mvtime if mvtime is None else mvtime
+        return spd, acc, mvt
+
+    def _set_position_absolute(self, x=None, y=None, z=None, roll=None, pitch=None, yaw=None, radius=None,
+                               speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None, **kwargs):
+        is_radian = self._default_is_radian if is_radian is None else is_radian
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        tcp_pos = [
+            self._last_position[0] if x is None else float(x),
+            self._last_position[1] if y is None else float(y),
+            self._last_position[2] if z is None else float(z),
+            self._last_position[3] if roll is None else to_radian(roll, is_radian),
+            self._last_position[4] if pitch is None else to_radian(pitch, is_radian),
+            self._last_position[5] if yaw is None else to_radian(yaw, is_radian),
+        ]
+        motion_type = kwargs.get('motion_type', False)
+        for i in range(3):
+            if self._is_out_of_tcp_range(tcp_pos[i+3], i + 3):
+                return APIState.OUT_OF_RANGE
+        if kwargs.get('check', False):
+            _, limit = self.is_tcp_limit(tcp_pos, True)
+            if _ == 0 and limit is True:
+                return APIState.TCP_LIMIT
+        self._has_motion_cmd = True
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime, **kwargs)
+        radius = radius if radius is not None else -1
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+        if self.version_is_ge(1, 11, 100) or kwargs.get('debug', False):
+            ret = self.arm_cmd.move_line_common(tcp_pos, spd, acc, mvt, radius, coord=0, is_axis_angle=False, only_check_type=only_check_type, motion_type=motion_type, feedback_key=feedback_key)
+        else:
+            if radius >= 0:
+                ret = self.arm_cmd.move_lineb(tcp_pos, spd, acc, mvt, radius, only_check_type, motion_type=motion_type)
+            else:
+                ret = self.arm_cmd.move_line(tcp_pos, spd, acc, mvt, only_check_type, motion_type=motion_type)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait, kwargs.get('is_pop', True))
+        ret[0] = self._check_code(ret[0], is_move_cmd=True)
+        self.log_api_info('API -> set_position -> code={}, pos={}, radius={}, velo={}, acc={}'.format(
+            ret[0], tcp_pos, radius, spd, acc), code=ret[0])
+        self._is_set_move = True
+        self._only_check_result = 0
+        if only_check_type > 0 and ret[0] == 0:
+            self._only_check_result = ret[3]
+            return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+        if only_check_type <= 0 and wait and ret[0] == 0:
+            code = self.wait_move(timeout, trans_id=trans_id)
+            self.__update_tcp_motion_params(spd, acc, mvt)
+            self._sync()
+            return code
+        if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+            self.__update_tcp_motion_params(spd, acc, mvt, tcp_pos)
+        return ret[0]
+
+    def _set_position_relative(self, x=None, y=None, z=None, roll=None, pitch=None, yaw=None, radius=None,
+                               speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None, **kwargs):
+        is_radian = self._default_is_radian if is_radian is None else is_radian
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        motion_type = kwargs.get('motion_type', False)
+        if self.version_is_ge(1, 8, 100):
+            # use relative api
+            tcp_pos = [
+                0 if x is None else float(x),
+                0 if y is None else float(y),
+                0 if z is None else float(z),
+                0 if roll is None else to_radian(roll, is_radian),
+                0 if pitch is None else to_radian(pitch, is_radian),
+                0 if yaw is None else to_radian(yaw, is_radian),
+            ]
+            self._has_motion_cmd = True
+            spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime, **kwargs)
+            radius = radius if radius is not None else -1
+            feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+            ret = self.arm_cmd.move_relative(tcp_pos, spd, acc, mvt, radius, False, False, only_check_type, motion_type=motion_type, feedback_key=feedback_key)
+            trans_id = self._get_feedback_transid(feedback_key, studio_wait, kwargs.get('is_pop', True))
+            ret[0] = self._check_code(ret[0], is_move_cmd=True)
+            self.log_api_info('API -> set_relative_position -> code={}, pos={}, radius={}, velo={}, acc={}'.format(
+                ret[0], tcp_pos, radius, spd, acc), code=ret[0])
+            self._is_set_move = True
+            self._only_check_result = 0
+            if only_check_type > 0 and ret[0] == 0:
+                self._only_check_result = ret[3]
+                return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+            if only_check_type <= 0 and wait and ret[0] == 0:
+                code = self.wait_move(timeout, trans_id=trans_id)
+                self.__update_tcp_motion_params(spd, acc, mvt)
+                self._sync()
+                return code
+            if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+                self.__update_tcp_motion_params(spd, acc, mvt)
+            return ret[0]
+        else:
+            # use absolute api
+            tcp_pos = [
+                self._last_position[0] if x is None else (self._last_position[0] + float(x)),
+                self._last_position[1] if y is None else (self._last_position[1] + float(y)),
+                self._last_position[2] if z is None else (self._last_position[2] + float(z)),
+                self._last_position[3] if roll is None else (self._last_position[3] + to_radian(roll, is_radian)),
+                self._last_position[4] if pitch is None else (self._last_position[4] + to_radian(pitch, is_radian)),
+                self._last_position[5] if yaw is None else (self._last_position[5] + to_radian(yaw, is_radian)),
+            ]
+            return self._set_position_absolute(*tcp_pos, radius=radius, speed=speed, mvacc=mvacc, mvtime=mvtime,
+                                               is_radian=True, wait=wait, timeout=timeout, **kwargs)
+
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
     def set_position(self, x=None, y=None, z=None, roll=None, pitch=None, yaw=None, radius=None,
                      speed=None, mvacc=None, mvtime=None, relative=False, is_radian=None,
                      wait=False, timeout=None, **kwargs):
-        code = self._wait_first_sync(relative)
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if only_check_type > 0 and wait:
+            code = self.wait_move(timeout=timeout)
+            if code != 0:
+                return code
+        code = self.__wait_sync()
         if code != 0:
             return code
-        is_radian = self._default_is_radian if is_radian is None else is_radian
-        tcp_pos = [x, y, z, roll, pitch, yaw]
-        last_used_position = self._last_position.copy()
-        last_used_tcp_speed = self._last_tcp_speed
-        last_used_tcp_acc = self._last_tcp_acc
-        for i in range(6):
-            value = tcp_pos[i]
-            if value is None:
-                continue
-            elif isinstance(value, str):
-                if value.isdigit():
-                    value = float(value)
-                else:
-                    continue
-            if relative:
-                if 2 < i < 6:
-                    if is_radian:
-                        if self._is_out_of_tcp_range(self._last_position[i] + value, i):
-                            self._last_position = last_used_position
-                            return APIState.OUT_OF_RANGE
-                        self._last_position[i] += value
-                    else:
-                        if self._is_out_of_tcp_range(self._last_position[i] + math.radians(value), i):
-                            self._last_position = last_used_position
-                            return APIState.OUT_OF_RANGE
-                        self._last_position[i] += math.radians(value)
-                else:
-                    self._last_position[i] += value
-            else:
-                if 2 < i < 6:
-                    if is_radian:
-                        if self._is_out_of_tcp_range(value, i):
-                            self._last_position = last_used_position
-                            return APIState.OUT_OF_RANGE
-                        self._last_position[i] = value
-                    else:
-                        if self._is_out_of_tcp_range(math.radians(value), i):
-                            self._last_position = last_used_position
-                            return APIState.OUT_OF_RANGE
-                        self._last_position[i] = math.radians(value)
-                else:
-                    self._last_position[i] = value
-
-        if speed is not None:
-            if isinstance(speed, str):
-                if speed.isdigit():
-                    speed = float(speed)
-                else:
-                    speed = self._last_tcp_speed
-            self._last_tcp_speed = min(max(speed, self._min_tcp_speed), self._max_tcp_speed)
-        elif kwargs.get('mvvelo', None) is not None:
-            mvvelo = kwargs.get('mvvelo')
-            if isinstance(mvvelo, str):
-                if mvvelo.isdigit():
-                    mvvelo = float(mvvelo)
-                else:
-                    mvvelo = self._last_tcp_speed
-            self._last_tcp_speed = min(max(mvvelo, self._min_tcp_speed), self._max_tcp_speed)
-        if mvacc is not None:
-            if isinstance(mvacc, str):
-                if mvacc.isdigit():
-                    mvacc = float(mvacc)
-                else:
-                    mvacc = self._last_tcp_acc
-            self._last_tcp_acc = min(max(mvacc, self._min_tcp_acc), self._max_tcp_acc)
-        if mvtime is not None:
-            if isinstance(mvtime, str):
-                if mvacc.isdigit():
-                    mvtime = float(mvtime)
-                else:
-                    mvtime = self._mvtime
-            self._mvtime = mvtime
-
-        if kwargs.get('check', False):
-            _, limit = self.is_tcp_limit(self._last_position)
-            if _ == 0 and limit is True:
-                self._last_position = last_used_position
-                self._last_tcp_speed = last_used_tcp_speed
-                self._last_tcp_acc = last_used_tcp_acc
-                return APIState.TCP_LIMIT
-        self._has_motion_cmd = True
-        if radius is not None and radius >= 0:
-            ret = self.arm_cmd.move_lineb(self._last_position, self._last_tcp_speed, self._last_tcp_acc, self._mvtime, radius)
+        if relative:
+            return self._set_position_relative(x=x, y=y, z=z, roll=roll, pitch=pitch, yaw=yaw, radius=radius,
+                                               speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian,
+                                               wait=wait, timeout=timeout, **kwargs)
         else:
-            ret = self.arm_cmd.move_line(self._last_position, self._last_tcp_speed, self._last_tcp_acc, self._mvtime)
-        self.log_api_info('API -> set_position -> code={}, pos={}, radius={}, velo={}, acc={}'.format(
-            ret[0], self._last_position, radius, self._last_tcp_speed, self._last_tcp_acc
-        ), code=ret[0])
-        self._is_set_move = True
-        ret[0] = self._check_code(ret[0], is_move_cmd=True)
-        if wait and ret[0] == 0:
-            if not self._enable_report:
-                warnings.warn('if you want to wait, please enable report')
-            else:
-                code = self.wait_move(timeout)
-                self._sync()
-                return code
-        if ret[0] < 0 and not self.get_is_moving():
-            self._last_position = last_used_position
-            self._last_tcp_speed = last_used_tcp_speed
-            self._last_tcp_acc = last_used_tcp_acc
-        return ret[0]
+            return self._set_position_absolute(x=x, y=y, z=z, roll=roll, pitch=pitch, yaw=yaw, radius=radius,
+                                               speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian,
+                                               wait=wait, timeout=timeout, **kwargs)
 
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
     def set_tool_position(self, x=0, y=0, z=0, roll=0, pitch=0, yaw=0,
                           speed=None, mvacc=None, mvtime=None, is_radian=None,
-                          wait=False, timeout=None, **kwargs):
+                          wait=False, timeout=None, radius=None, **kwargs):
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        last_used_tcp_speed = self._last_tcp_speed
-        last_used_tcp_acc = self._last_tcp_acc
-        mvpose = [x, y, z, roll, pitch, yaw]
-        if not is_radian:
-            mvpose = [x, y, z, math.radians(roll), math.radians(pitch), math.radians(yaw)]
-        if speed is not None:
-            if isinstance(speed, str):
-                if speed.isdigit():
-                    speed = float(speed)
-                else:
-                    speed = self._last_tcp_speed
-            self._last_tcp_speed = min(max(speed, self._min_tcp_speed), self._max_tcp_speed)
-        elif kwargs.get('mvvelo', None) is not None:
-            mvvelo = kwargs.get('mvvelo')
-            if isinstance(mvvelo, str):
-                if mvvelo.isdigit():
-                    mvvelo = float(mvvelo)
-                else:
-                    mvvelo = self._last_tcp_speed
-            self._last_tcp_speed = min(max(mvvelo, self._min_tcp_speed), self._max_tcp_speed)
-        if mvacc is not None:
-            if isinstance(mvacc, str):
-                if mvacc.isdigit():
-                    mvacc = float(mvacc)
-                else:
-                    mvacc = self._last_tcp_acc
-            self._last_tcp_acc = min(max(mvacc, self._min_tcp_acc), self._max_tcp_acc)
-        if mvtime is not None:
-            if isinstance(mvtime, str):
-                if mvacc.isdigit():
-                    mvtime = float(mvtime)
-                else:
-                    mvtime = self._mvtime
-            self._mvtime = mvtime
-
-        self._has_motion_cmd = True
-        ret = self.arm_cmd.move_line_tool(mvpose, self._last_tcp_speed, self._last_tcp_acc, self._mvtime)
-        self.log_api_info('API -> set_tool_position -> code={}, pos={}, velo={}, acc={}'.format(
-            ret[0], mvpose, self._last_tcp_speed, self._last_tcp_acc
-        ), code=ret[0])
-        self._is_set_move = True
-        ret[0] = self._check_code(ret[0], is_move_cmd=True)
-        if wait and ret[0] == 0:
-            if not self._enable_report:
-                warnings.warn('if you want to wait, please enable report')
-            else:
-                code = self.wait_move(timeout)
-                self._sync()
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if only_check_type > 0 and wait:
+            code = self.wait_move(timeout=timeout)
+            if code != 0:
                 return code
-        if ret[0] < 0 and not self.get_is_moving():
-            self._last_tcp_speed = last_used_tcp_speed
-            self._last_tcp_acc = last_used_tcp_acc
+        tcp_pos = [
+            x, y, z,
+            to_radian(roll, is_radian),
+            to_radian(pitch, is_radian),
+            to_radian(yaw, is_radian)
+        ]
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime, **kwargs)
+        self._has_motion_cmd = True
+        motion_type = kwargs.get('motion_type', False)
+        radius = radius if radius is not None else -1
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+
+        if self.version_is_ge(1, 11, 100) or kwargs.get('debug', False):
+            ret = self.arm_cmd.move_line_common(tcp_pos, spd, acc, mvt, radius, coord=1, is_axis_angle=False, only_check_type=only_check_type, motion_type=motion_type, feedback_key=feedback_key)
+        else:
+            ret = self.arm_cmd.move_line_tool(tcp_pos, spd, acc, mvt, only_check_type, motion_type=motion_type)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait, kwargs.get('is_pop', True))
+        ret[0] = self._check_code(ret[0], is_move_cmd=True)
+        self.log_api_info('API -> set_tool_position -> code={}, pos={}, velo={}, acc={}'.format(
+            ret[0], tcp_pos, spd, acc), code=ret[0])
+        self._is_set_move = True
+        self._only_check_result = 0
+        if only_check_type > 0 and ret[0] == 0:
+            self._only_check_result = ret[3]
+            return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+        if only_check_type <= 0 and wait and ret[0] == 0:
+            code = self.wait_move(timeout, trans_id=trans_id)
+            self.__update_tcp_motion_params(spd, acc, mvt)
+            self._sync()
+            return code
+        if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+            self.__update_tcp_motion_params(spd, acc, mvt)
         return ret[0]
 
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
     def set_position_aa(self, mvpose, speed=None, mvacc=None, mvtime=None,
                         is_radian=None, is_tool_coord=False, relative=False,
-                        wait=False, timeout=None, **kwargs):
+                        wait=False, timeout=None, radius=None, **kwargs):
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        last_used_tcp_speed = self._last_tcp_speed
-        last_used_tcp_acc = self._last_tcp_acc
-        pose = [mvpose[i] if i <= 2 or is_radian else math.radians(mvpose[i]) for i in range(6)]
-        if speed is not None:
-            if isinstance(speed, str):
-                if speed.isdigit():
-                    speed = float(speed)
-                else:
-                    speed = self._last_tcp_speed
-            self._last_tcp_speed = min(max(speed, self._min_tcp_speed), self._max_tcp_speed)
-        if mvacc is not None:
-            if isinstance(mvacc, str):
-                if mvacc.isdigit():
-                    mvacc = float(mvacc)
-                else:
-                    mvacc = self._last_tcp_acc
-            self._last_tcp_acc = min(max(mvacc, self._min_tcp_acc), self._max_tcp_acc)
-        if mvtime is not None:
-            if isinstance(mvtime, str):
-                if mvacc.isdigit():
-                    mvtime = float(mvtime)
-                else:
-                    mvtime = self._mvtime
-            self._mvtime = mvtime
-
-        mvcoord = kwargs.get('mvcoord', int(is_tool_coord))
-
-        self._has_motion_cmd = True
-        ret = self.arm_cmd.move_line_aa(pose, self._last_tcp_speed, self._last_tcp_acc, self._mvtime, mvcoord, int(relative))
-        self.log_api_info('API -> set_position_aa -> code={}, pos={}, velo={}, acc={}'.format(
-            ret[0], pose, self._last_tcp_speed, self._last_tcp_acc
-        ), code=ret[0])
-        self._is_set_move = True
-        ret[0] = self._check_code(ret[0], is_move_cmd=True)
-        if wait and ret[0] == 0:
-            if not self._enable_report:
-                warnings.warn('if you want to wait, please enable report')
-            else:
-                code = self.wait_move(timeout)
-                self._sync()
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if only_check_type > 0 and wait:
+            code = self.wait_move(timeout=timeout)
+            if code != 0:
                 return code
-        if ret[0] < 0 and not self.get_is_moving():
-            self._last_tcp_speed = last_used_tcp_speed
-            self._last_tcp_acc = last_used_tcp_acc
+        tcp_pos = [to_radian(mvpose[i], is_radian or i <= 2) for i in range(6)]
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime, **kwargs)
+        mvcoord = kwargs.get('mvcoord', int(is_tool_coord))
+        self._has_motion_cmd = True
+        motion_type = kwargs.get('motion_type', False)
+        radius = radius if radius is not None else -1
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+        if self.version_is_ge(1, 11, 100) or kwargs.get('debug', False):
+            if not is_tool_coord and relative:
+                ret = self.arm_cmd.move_relative(tcp_pos, spd, acc, mvt, radius, False, True, only_check_type, motion_type=motion_type, feedback_key=feedback_key)
+            else:
+                ret = self.arm_cmd.move_line_common(tcp_pos, spd, acc, mvt, radius, coord=1 if is_tool_coord else 0, is_axis_angle=True, only_check_type=only_check_type, motion_type=motion_type, feedback_key=feedback_key)
+        else:
+            ret = self.arm_cmd.move_line_aa(tcp_pos, spd, acc, mvt, mvcoord, int(relative), only_check_type, motion_type=motion_type)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait)
+        ret[0] = self._check_code(ret[0], is_move_cmd=True)
+        self.log_api_info('API -> set_position_aa -> code={}, pos={}, velo={}, acc={}'.format(
+            ret[0], tcp_pos, spd, acc), code=ret[0])
+        self._is_set_move = True
+        self._only_check_result = 0
+        if only_check_type > 0 and ret[0] == 0:
+            self._only_check_result = ret[3]
+            return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+        if only_check_type <= 0 and wait and ret[0] == 0:
+            code = self.wait_move(timeout, trans_id=trans_id)
+            self.__update_tcp_motion_params(spd, acc, mvt)
+            self._sync()
+            return code
+        if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+            self.__update_tcp_motion_params(spd, acc, mvt)
         return ret[0]
 
+    @xarm_wait_until_not_pause
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
     def set_servo_cartesian_aa(self, mvpose, speed=None, mvacc=None, is_radian=None, is_tool_coord=False, relative=False, **kwargs):
         is_radian = self._default_is_radian if is_radian is None else is_radian
         assert len(mvpose) >= 6
-
-        pose = [mvpose[i] if i <= 2 or is_radian else math.radians(mvpose[i]) for i in range(6)]
-        _speed = self.last_used_tcp_speed if speed is None else speed
-        _mvacc = self.last_used_tcp_acc if mvacc is None else mvacc
+        tcp_pos = [to_radian(mvpose[i], is_radian or i <= 2) for i in range(6)]
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, self._mvtime, **kwargs)
 
         tool_coord = kwargs.get('tool_coord', int(is_tool_coord))
 
         self._has_motion_cmd = True
-        ret = self.arm_cmd.move_servo_cart_aa(mvpose=pose, mvvelo=_speed, mvacc=_mvacc, tool_coord=tool_coord,
-                                              relative=int(relative))
+        ret = self.arm_cmd.move_servo_cart_aa(mvpose=tcp_pos, mvvelo=spd, mvacc=acc, tool_coord=tool_coord, relative=int(relative))
+        ret[0] = self._check_code(ret[0], is_move_cmd=True, mode=1)
         self.log_api_info('API -> set_servo_cartesian_aa -> code={}, pose={}, velo={}, acc={}'.format(
-            ret[0], pose, _speed, _mvacc
+            ret[0], tcp_pos, spd, acc
         ), code=ret[0])
         self._is_set_move = True
         return ret[0]
 
+    def _set_servo_angle_absolute(self, angles, speed=None, mvacc=None, mvtime=None,
+                                  is_radian=None, wait=False, timeout=None, radius=None, **kwargs):
+        is_radian = self._default_is_radian if is_radian is None else is_radian
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        joints = self._last_angles.copy()
+        for i in range(min(len(self._last_angles), len(angles))):
+            if i >= self.axis or angles[i] is None:
+                continue
+            joints[i] = to_radian(angles[i], is_radian)
+            if self._is_out_of_joint_range(joints[i], i):
+                return APIState.OUT_OF_RANGE
+        if kwargs.get('check', False):
+            _, limit = self.is_joint_limit(joints, True)
+            if _ == 0 and limit is True:
+                return APIState.JOINT_LIMIT
+        joints[5] = 0 if self.axis <= 5 else joints[5]
+        joints[6] = 0 if self.axis <= 6 else joints[6]
+        spd, acc, mvt = self.__get_joint_motion_params(speed, mvacc, mvtime, is_radian=is_radian, **kwargs)
+        self._has_motion_cmd = True
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+        if self.version_is_ge(1, 5, 20) and radius is not None and radius >= 0:
+            ret = self.arm_cmd.move_jointb(joints, spd, acc, radius, only_check_type, feedback_key=feedback_key)
+        else:
+            ret = self.arm_cmd.move_joint(joints, spd, acc, mvt, only_check_type, feedback_key=feedback_key)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait, kwargs.get('is_pop', True))
+        ret[0] = self._check_code(ret[0], is_move_cmd=True)
+        self.log_api_info('API -> set_servo_angle -> code={}, angles={}, velo={}, acc={}, radius={}'.format(
+            ret[0], joints, spd, acc, radius
+        ), code=ret[0])
+        self._is_set_move = True
+        self._only_check_result = 0
+        if only_check_type > 0 and ret[0] == 0:
+            self._only_check_result = ret[3]
+            return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+        if only_check_type <= 0 and wait and ret[0] == 0:
+            code = self.wait_move(timeout, trans_id=trans_id)
+            self.__update_joint_motion_params(spd, acc, mvt)
+            self._sync()
+            return code
+        if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+            self.__update_joint_motion_params(spd, acc, mvt, joints)
+        return ret[0]
+
+    def _set_servo_angle_relative(self, angles, speed=None, mvacc=None, mvtime=None,
+                                  is_radian=None, wait=False, timeout=None, radius=None, **kwargs):
+        is_radian = self._default_is_radian if is_radian is None else is_radian
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if self.version_is_ge(1, 8, 100):
+            # use relative api
+            joints = [0] * 7
+            for i in range(min(7, len(angles))):
+                if i >= self.axis or angles[i] is None:
+                    continue
+                joints[i] = to_radian(angles[i], is_radian)
+            self._has_motion_cmd = True
+            spd, acc, mvt = self.__get_joint_motion_params(speed, mvacc, mvtime, is_radian=is_radian, **kwargs)
+            radius = radius if radius is not None else -1
+            feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+            joints[5] = 0 if self.axis <= 5 else joints[5]
+            joints[6] = 0 if self.axis <= 6 else joints[6]
+            ret = self.arm_cmd.move_relative(joints, spd, acc, mvt, radius, True, False, only_check_type, feedback_key=feedback_key)
+            trans_id = self._get_feedback_transid(feedback_key, studio_wait)
+            ret[0] = self._check_code(ret[0], is_move_cmd=True)
+            self.log_api_info('API -> set_relative_servo_angle -> code={}, angles={}, velo={}, acc={}, radius={}'.format(
+                ret[0], joints, spd, acc, radius
+            ), code=ret[0])
+            self._is_set_move = True
+            self._only_check_result = 0
+            if only_check_type > 0 and ret[0] == 0:
+                self._only_check_result = ret[3]
+                return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+            if only_check_type <= 0 and wait and ret[0] == 0:
+                code = self.wait_move(timeout, trans_id=trans_id)
+                self.__update_joint_motion_params(spd, acc, mvt)
+                self._sync()
+                return code
+            if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+                self.__update_joint_motion_params(spd, acc, mvt)
+            return ret[0]
+        else:
+            # use absolute api
+            joints = self._last_angles.copy()
+            for i in range(min(len(self._last_angles), len(angles))):
+                if i >= self.axis or angles[i] is None:
+                    continue
+                joints[i] = to_radian(angles[i], is_radian)
+                if self._is_out_of_joint_range(joints[i], i):
+                    return APIState.OUT_OF_RANGE
+            return self._set_servo_angle_absolute(joints, speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=True,
+                                                  wait=wait, timeout=timeout, radius=radius, **kwargs)
+
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
     def set_servo_angle(self, servo_id=None, angle=None, speed=None, mvacc=None, mvtime=None,
                         relative=False, is_radian=None, wait=False, timeout=None, radius=None, **kwargs):
         assert ((servo_id is None or servo_id == 8) and isinstance(angle, Iterable)) \
             or (1 <= servo_id <= 7 and angle is not None and not isinstance(angle, Iterable)), \
             'param servo_id or angle error'
-        code = self._wait_first_sync(relative)
+        if servo_id is not None and servo_id != 8:
+            if servo_id > self.axis or servo_id <= 0:
+                return APIState.SERVO_NOT_EXIST
+            angles = [None] * 7
+            angles[servo_id - 1] = angle
+        else:
+            angles = angle
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if only_check_type > 0 and wait:
+            code = self.wait_move(timeout=timeout)
+            if code != 0:
+                return code
+        code = self.__wait_sync()
         if code != 0:
             return code
-        last_used_angle = self._last_angles.copy()
-        last_used_joint_speed = self._last_joint_speed
-        last_used_joint_acc = self._last_joint_acc
-        is_radian = self._default_is_radian if is_radian is None else is_radian
-        if servo_id is None or servo_id == 8:
-            for i in range(min(len(angle), len(self._last_angles))):
-                value = angle[i]
-                if value is None or i >= self.axis:
-                    continue
-                if isinstance(value, str):
-                    if value.isdigit():
-                        value = float(value)
-                    else:
-                        continue
-                if relative:
-                    if is_radian:
-                        if self._is_out_of_joint_range(self._last_angles[i] + value, i):
-                            self._last_angles = last_used_angle
-                            return APIState.OUT_OF_RANGE
-                        self._last_angles[i] += value
-                    else:
-                        if self._is_out_of_joint_range(self._last_angles[i] + math.radians(value), i):
-                            self._last_angles = last_used_angle
-                            return APIState.OUT_OF_RANGE
-                        self._last_angles[i] += math.radians(value)
-                else:
-                    if is_radian:
-                        if self._is_out_of_joint_range(value, i):
-                            self._last_angles = last_used_angle
-                            return APIState.OUT_OF_RANGE
-                        self._last_angles[i] = value
-                    else:
-                        if self._is_out_of_joint_range(math.radians(value), i):
-                            self._last_angles = last_used_angle
-                            return APIState.OUT_OF_RANGE
-                        self._last_angles[i] = math.radians(value)
+        if relative:
+            return self._set_servo_angle_relative(angles, speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian,
+                                                  wait=wait, timeout=timeout, radius=radius, **kwargs)
         else:
-            if servo_id > self.axis:
-                return APIState.SERVO_NOT_EXIST
-            if isinstance(angle, str):
-                if angle.isdigit():
-                    angle = float(angle)
-                else:
-                    raise Exception('param angle error')
-            if relative:
-                if is_radian:
-                    if self._is_out_of_joint_range(self._last_angles[servo_id - 1] + angle, servo_id - 1):
-                        self._last_angles = last_used_angle
-                        return APIState.OUT_OF_RANGE
-                    self._last_angles[servo_id - 1] += angle
-                else:
-                    if self._is_out_of_joint_range(self._last_angles[servo_id - 1] + math.radians(angle), servo_id - 1):
-                        self._last_angles = last_used_angle
-                        return APIState.OUT_OF_RANGE
-                    self._last_angles[servo_id - 1] += math.radians(angle)
-            else:
-                if is_radian:
-                    if self._is_out_of_joint_range(angle, servo_id - 1):
-                        self._last_angles = last_used_angle
-                        return APIState.OUT_OF_RANGE
-                    self._last_angles[servo_id - 1] = angle
-                else:
-                    if self._is_out_of_joint_range(math.radians(angle), servo_id - 1):
-                        self._last_angles = last_used_angle
-                        return APIState.OUT_OF_RANGE
-                    self._last_angles[servo_id - 1] = math.radians(angle)
-
-        if speed is not None:
-            if isinstance(speed, str):
-                if speed.isdigit():
-                    speed = float(speed)
-                else:
-                    speed = self._last_joint_speed if is_radian else math.degrees(self._last_joint_speed)
-            if not is_radian:
-                speed = math.radians(speed)
-            self._last_joint_speed = min(max(speed, self._min_joint_speed), self._max_joint_speed)
-        elif kwargs.get('mvvelo', None) is not None:
-            mvvelo = kwargs.get('mvvelo')
-            if isinstance(mvvelo, str):
-                if mvvelo.isdigit():
-                    mvvelo = float(mvvelo)
-                else:
-                    mvvelo = self._last_joint_speed if is_radian else math.degrees(self._last_joint_speed)
-            if not is_radian:
-                mvvelo = math.radians(mvvelo)
-            self._last_joint_speed = min(max(mvvelo, self._min_joint_speed), self._max_joint_speed)
-        if mvacc is not None:
-            if isinstance(mvacc, str):
-                if mvacc.isdigit():
-                    mvacc = float(mvacc)
-                else:
-                    mvacc = self._last_joint_acc if is_radian else math.degrees(self._last_joint_acc)
-            if not is_radian:
-                mvacc = math.radians(mvacc)
-            self._last_joint_acc = min(max(mvacc, self._min_joint_acc), self._max_joint_acc)
-        if mvtime is not None:
-            if isinstance(mvtime, str):
-                if mvacc.isdigit():
-                    mvtime = float(mvtime)
-                else:
-                    mvtime = self._mvtime
-            self._mvtime = mvtime
-
-        if kwargs.get('check', False):
-            _, limit = self.is_joint_limit(self._last_angles)
-            if _ == 0 and limit is True:
-                self._last_angles = last_used_angle
-                self._last_joint_speed = last_used_joint_speed
-                self._last_joint_acc = last_used_joint_acc
-                return APIState.JOINT_LIMIT
-
-        self._has_motion_cmd = True
-        if self.version_is_ge(1, 5, 20) and radius is not None and radius >= 0:
-            ret = self.arm_cmd.move_jointb(self._last_angles, self._last_joint_speed, self._last_joint_acc, radius)
-        else:
-            ret = self.arm_cmd.move_joint(self._last_angles, self._last_joint_speed, self._last_joint_acc, self._mvtime)
-        self.log_api_info('API -> set_servo_angle -> code={}, angles={}, velo={}, acc={}, radius={}'.format(
-            ret[0], self._last_angles, self._last_joint_speed, self._last_joint_acc, radius
-        ), code=ret[0])
-        self._is_set_move = True
-        ret[0] = self._check_code(ret[0], is_move_cmd=True)
-        if wait and ret[0] == 0:
-            if not self._enable_report:
-                warnings.warn('if you want to wait, please enable report')
-            else:
-                code = self.wait_move(timeout)
-                self._sync()
-                return code
-        if ret[0] < 0 and not self.get_is_moving():
-            self._last_angles = last_used_angle
-            self._last_joint_speed = last_used_joint_speed
-            self._last_joint_acc = last_used_joint_acc
-        return ret[0]
+            return self._set_servo_angle_absolute(angles, speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian,
+                                                  wait=wait, timeout=timeout, radius=radius, **kwargs)
 
     @xarm_is_ready(_type='set')
     def set_servo_angle_j(self, angles, speed=None, mvacc=None, mvtime=None, is_radian=None, **kwargs):
         # if not self._check_mode_is_correct(1):
         #     return APIState.MODE_IS_NOT_CORRECT
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        _angles = [angle if is_radian else math.radians(angle) for angle in angles]
+        angs = [to_radian(angle, is_radian) for angle in angles]
         for i in range(self.axis):
-            if self._is_out_of_joint_range(_angles[i], i):
+            if self._is_out_of_joint_range(angs[i], i):
                 return APIState.OUT_OF_RANGE
-        while len(_angles) < 7:
-            _angles.append(0)
-        _speed = self._last_joint_speed if speed is None else speed
-        _mvacc = self._last_joint_acc if mvacc is None else mvacc
-        _mvtime = self._mvtime if mvtime is None else mvtime
+        while len(angs) < 7:
+            angs.append(0)
+        angs[5] = 0 if self.axis <= 5 else angs[5]
+        angs[6] = 0 if self.axis <= 6 else angs[6]
+        spd, acc, mvt = self.__get_joint_motion_params(speed, mvacc, mvtime, is_radian=is_radian, **kwargs)
         self._has_motion_cmd = True
-        ret = self.arm_cmd.move_servoj(_angles, _speed, _mvacc, _mvtime)
+        ret = self.arm_cmd.move_servoj(angs, spd, acc, mvt)
+        ret[0] = self._check_code(ret[0], is_move_cmd=True, mode=1)
         self.log_api_info('API -> set_servo_angle_j -> code={}, angles={}, velo={}, acc={}'.format(
-            ret[0], _angles, _speed, _mvacc
+            ret[0], angs, spd, acc
         ), code=ret[0])
         self._is_set_move = True
         return ret[0]
@@ -505,139 +508,86 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         #     return APIState.MODE_IS_NOT_CORRECT
         assert len(mvpose) >= 6
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        if not is_radian:
-            pose = [mvpose[i] if i < 3 else math.radians(mvpose[i]) for i in range(6)]
-        else:
-            pose = mvpose
-        _speed = self.last_used_tcp_speed if speed is None else speed
-        _mvacc = self.last_used_tcp_acc if mvacc is None else mvacc
-        # _mvtime = self._mvtime if mvtime is None else mvtime
-        _mvtime = int(is_tool_coord)
-
+        tcp_pos = [to_radian(mvpose[i], is_radian or i <= 2) for i in range(6)]
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime, **kwargs)
         self._has_motion_cmd = True
-        ret = self.arm_cmd.move_servo_cartesian(pose, _speed, _mvacc, _mvtime)
-        self.log_api_info('API -> set_servo_cartisian -> code={}, pose={}, velo={}, acc={}'.format(
-            ret[0], pose, _speed, _mvacc
+        ret = self.arm_cmd.move_servo_cartesian(tcp_pos, spd, acc, int(is_tool_coord))
+        ret[0] = self._check_code(ret[0], is_move_cmd=True, mode=1)
+        self.log_api_info('API -> set_servo_cartisian -> code={}, pose={}, velo={}, acc={}, is_tool_coord={}'.format(
+            ret[0], tcp_pos, spd, acc, is_tool_coord
         ), code=ret[0])
         self._is_set_move = True
         return ret[0]
 
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
-    def move_circle(self, pose1, pose2, percent, speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None, **kwargs):
-        last_used_tcp_speed = self._last_tcp_speed
-        last_used_tcp_acc = self._last_tcp_acc
+    def move_circle(self, pose1, pose2, percent, speed=None, mvacc=None, mvtime=None, is_radian=None,
+                    wait=False, timeout=None, is_tool_coord=False, is_axis_angle=False, **kwargs):
         is_radian = self._default_is_radian if is_radian is None else is_radian
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if only_check_type > 0 and wait:
+            code = self.wait_move(timeout=timeout)
+            if code != 0:
+                return code
         pose_1 = []
         pose_2 = []
         for i in range(6):
-            pose_1.append(pose1[i] if i < 3 or is_radian else math.radians(pose1[i]))
-            pose_2.append(pose2[i] if i < 3 or is_radian else math.radians(pose2[i]))
-        if speed is not None:
-            if isinstance(speed, str):
-                if speed.isdigit():
-                    speed = float(speed)
-                else:
-                    speed = self._last_tcp_speed
-            self._last_tcp_speed = min(max(speed, self._min_tcp_speed), self._max_tcp_speed)
-        elif kwargs.get('mvvelo', None) is not None:
-            mvvelo = kwargs.get('mvvelo')
-            if isinstance(mvvelo, str):
-                if mvvelo.isdigit():
-                    mvvelo = float(mvvelo)
-                else:
-                    mvvelo = self._last_tcp_speed
-            self._last_tcp_speed = min(max(mvvelo, self._min_tcp_speed), self._max_tcp_speed)
-        if mvacc is not None:
-            if isinstance(mvacc, str):
-                if mvacc.isdigit():
-                    mvacc = float(mvacc)
-                else:
-                    mvacc = self._last_tcp_acc
-            self._last_tcp_acc = min(max(mvacc, self._min_tcp_acc), self._max_tcp_acc)
-        if mvtime is not None:
-            if isinstance(mvtime, str):
-                if mvacc.isdigit():
-                    mvtime = float(mvtime)
-                else:
-                    mvtime = self._mvtime
-            self._mvtime = mvtime
-
+            pose_1.append(to_radian(pose1[i], is_radian or i <= 2))
+            pose_2.append(to_radian(pose2[i], is_radian or i <= 2))
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime, **kwargs)
         self._has_motion_cmd = True
-        ret = self.arm_cmd.move_circle(pose_1, pose_2, self._last_tcp_speed, self._last_tcp_acc, self._mvtime, percent)
-        self.log_api_info('API -> move_circle -> code={}, pos1={}, pos2={}, percent={}%, velo={}, acc={}'.format(
-            ret[0], pose_1, pose_2, percent, self._last_tcp_speed, self._last_tcp_acc
-        ), code=ret[0])
-        self._is_set_move = True
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+        if self.version_is_ge(1, 11, 100) or kwargs.get('debug', False):
+            ret = self.arm_cmd.move_circle_common(pose_1, pose_2, spd, acc, mvt, percent, coord=1 if is_tool_coord else 0, is_axis_angle=is_axis_angle, only_check_type=only_check_type, feedback_key=feedback_key)
+        else:
+            ret = self.arm_cmd.move_circle(pose_1, pose_2, spd, acc, mvt, percent, only_check_type)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait, kwargs.get('is_pop', True))
         ret[0] = self._check_code(ret[0], is_move_cmd=True)
-        if wait and ret[0] == 0:
-            if not self._enable_report:
-                warnings.warn('if you want to wait, please enable report')
-            else:
-                code = self.wait_move(timeout)
-                self._sync()
-                return code
-        if ret[0] < 0 and not self.get_is_moving():
-            self._last_tcp_speed = last_used_tcp_speed
-            self._last_tcp_acc = last_used_tcp_acc
+        self.log_api_info('API -> move_circle -> code={}, pos1={}, pos2={}, percent={}%, velo={}, acc={}'.format(
+            ret[0], pose_1, pose_2, percent, spd, acc), code=ret[0])
+        self._is_set_move = True
+        self._only_check_result = 0
+        if only_check_type > 0 and ret[0] == 0:
+            self._only_check_result = ret[3]
+            return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+        if only_check_type <= 0 and wait and ret[0] == 0:
+            code = self.wait_move(timeout, trans_id=trans_id)
+            self.__update_tcp_motion_params(spd, acc, mvt)
+            self._sync()
+            return code
+        if only_check_type <= 0 and (ret[0] >= 0 or self.get_is_moving()):
+            self.__update_tcp_motion_params(spd, acc, mvt)
         return ret[0]
 
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
     @xarm_is_ready(_type='set')
-    @xarm_is_pause(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
     def move_gohome(self, speed=None, mvacc=None, mvtime=None, is_radian=None, wait=False, timeout=None, **kwargs):
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        if speed is not None:
-            if isinstance(speed, str):
-                if speed.isdigit():
-                    speed = float(speed)
-                else:
-                    speed = self._last_joint_speed if is_radian else math.degrees(self._last_joint_speed)
-            if not is_radian:
-                speed = math.radians(speed)
-            self._last_joint_speed = min(max(speed, self._min_joint_speed), self._max_joint_speed)
-        elif kwargs.get('mvvelo', None) is not None:
-            mvvelo = kwargs.get('mvvelo')
-            if isinstance(mvvelo, str):
-                if mvvelo.isdigit():
-                    mvvelo = float(mvvelo)
-                else:
-                    mvvelo = self._last_joint_speed if is_radian else math.degrees(self._last_joint_speed)
-            if not is_radian:
-                mvvelo = math.radians(mvvelo)
-            self._last_joint_speed = min(max(mvvelo, self._min_joint_speed), self._max_joint_speed)
-        if mvacc is not None:
-            if isinstance(mvacc, str):
-                if mvacc.isdigit():
-                    mvacc = float(mvacc)
-                else:
-                    mvacc = self._last_joint_acc if is_radian else math.degrees(self._last_joint_acc)
-            if not is_radian:
-                mvacc = math.radians(mvacc)
-            self._last_joint_acc = min(max(mvacc, self._min_joint_acc), self._max_joint_acc)
-        if mvtime is not None:
-            if isinstance(mvtime, str):
-                if mvacc.isdigit():
-                    mvtime = float(mvtime)
-                else:
-                    mvtime = self._mvtime
-            self._mvtime = mvtime
-
+        only_check_type = kwargs.get('only_check_type', self._only_check_type)
+        if only_check_type > 0 and wait:
+            code = self.wait_move(timeout=timeout)
+            if code != 0:
+                return code
+        spd, acc, mvt = self.__get_joint_motion_params(speed, mvacc, mvtime, is_radian=is_radian, **kwargs)
         self._has_motion_cmd = True
-        ret = self.arm_cmd.move_gohome(self._last_joint_speed, self._last_joint_acc, self._mvtime)
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+        ret = self.arm_cmd.move_gohome(spd, acc, mvt, only_check_type, feedback_key=feedback_key)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait)
+        ret[0] = self._check_code(ret[0], is_move_cmd=True)
         self.log_api_info('API -> move_gohome -> code={}, velo={}, acc={}'.format(
-            ret[0], self._last_joint_speed, self._last_joint_acc
+            ret[0], spd, acc
         ), code=ret[0])
         self._is_set_move = True
-        ret[0] = self._check_code(ret[0], is_move_cmd=True)
-        if wait and ret[0] == 0:
-            if not self._enable_report:
-                warnings.warn('if you want to wait, please enable report')
-            else:
-                code = self.wait_move(timeout)
-                self._sync()
-                return code
+        self._only_check_result = 0
+        if only_check_type > 0 and ret[0] == 0:
+            self._only_check_result = ret[3]
+            return APIState.HAS_ERROR if ret[3] != 0 else ret[0]
+        if only_check_type <= 0 and wait and ret[0] == 0:
+            code = self.wait_move(timeout, trans_id=trans_id)
+            self._sync()
+            return code
         return ret[0]
 
     @xarm_is_ready(_type='set')
@@ -645,20 +595,16 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
                        automatic_calibration=True, speed=None, mvacc=None, mvtime=None, wait=False):
         assert len(paths) > 0, 'parameter paths error'
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        if speed is None:
-            speed = self._last_tcp_speed
-        if mvacc is None:
-            mvacc = self._last_tcp_acc
-        if mvtime is None:
-            mvtime = 0
+        spd, acc, mvt = self.__get_tcp_motion_params(speed, mvacc, mvtime)
         logger.info('move_arc_lines--begin')
         if automatic_calibration:
-            _ = self.set_position(*paths[0], is_radian=is_radian, speed=speed, mvacc=mvacc, mvtime=mvtime, wait=True)
+            _ = self.set_position(*paths[0], is_radian=is_radian, speed=spd, mvacc=acc, mvtime=mvt, wait=True)
             if _ < 0:
                 logger.error('quit, api failed, code={}'.format(_))
                 return
             _, angles = self.get_servo_angle(is_radian=True)
-        self.set_pause_time(first_pause_time)
+        if first_pause_time > 0:
+            self.set_pause_time(first_pause_time)
         last_used_joint_speed = self._last_joint_speed
 
         def _move():
@@ -674,7 +620,7 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
                     radius = 0
                 if self.has_error or self.is_stop:
                     return -2
-                ret = self.set_position(*path[:6], radius=radius, is_radian=is_radian, wait=False, speed=speed, mvacc=mvacc, mvtime=mvtime)
+                ret = self.set_position(*path[:6], radius=radius, is_radian=is_radian, wait=False, speed=spd, mvacc=acc, mvtime=mvt)
                 if ret < 0:
                     return -1
             return 0
@@ -691,7 +637,8 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
                     elif _ == -2:
                         break
                     count += 1
-                    self.set_pause_time(repeat_pause_time)
+                    if repeat_pause_time > 0:
+                        self.set_pause_time(repeat_pause_time)
                 if api_failed:
                     logger.error('quit, api error')
                 elif self._error_code != 0:
@@ -709,7 +656,8 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
                     elif _ == -2:
                         break
                     count += 1
-                    self.set_pause_time(repeat_pause_time)
+                    if repeat_pause_time > 0:
+                        self.set_pause_time(repeat_pause_time)
                 if api_failed:
                     logger.error('quit, api error')
                 elif self._error_code != 0:
@@ -747,9 +695,9 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         return ret[0]
 
     @xarm_is_connected(_type='set')
-    def shutdown_system(self, value=1):
-        ret = self.arm_cmd.shutdown_system(value)
-        self.log_api_info('API -> shutdown_system -> code={}'.format(ret[0]), code=ret[0])
+    def system_control(self, value=1):
+        ret = self.arm_cmd.system_control(value)
+        self.log_api_info('API -> system_control({}) -> code={}'.format(value, ret[0]), code=ret[0])
         return ret[0]
 
     @xarm_is_connected(_type='set')
@@ -767,9 +715,7 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
     @xarm_is_connected(_type='set')
     def set_reduced_max_joint_speed(self, speed, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        speed = speed
-        if not is_radian:
-            speed = math.radians(speed)
+        speed = to_radian(speed, is_radian)
         ret = self.arm_cmd.set_reduced_jointspeed(speed)
         self.log_api_info('API -> set_reduced_linespeed -> code={}, speed={}'.format(ret[0], speed), code=ret[0])
         return ret[0]
@@ -857,22 +803,19 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         ret = self.arm_cmd.cancel_timer(tid)
         return ret[0]
 
+    @xarm_wait_until_not_pause
     @xarm_is_connected(_type='set')
-    @xarm_is_pause(_type='set')
-    def set_world_offset(self, offset, is_radian=None):
+    def set_world_offset(self, offset, is_radian=None, wait=True):
         is_radian = self._default_is_radian if is_radian is None else is_radian
         assert isinstance(offset, Iterable) and len(offset) >= 6
         world_offset = [0] * 6
-        for i in range(len(offset)):
-            if not offset[i]:
-                continue
-            if i < 3:
-                world_offset[i] = offset[i]
-            elif i < 6:
-                if not is_radian:
-                    world_offset[i] = math.radians(offset[i])
-                else:
-                    world_offset[i] = offset[i]
+        for i in range(min(len(offset), 6)):
+            world_offset[i] = to_radian(offset[i], is_radian or i <= 2)
+        if wait:
+            if self._support_feedback:
+                self.wait_all_task_finish()
+            else:
+                self.wait_move()
         ret = self.arm_cmd.set_world_offset(world_offset)
         self.log_api_info('API -> set_world_offset -> code={}, offset={}'.format(ret[0], world_offset), code=ret[0])
         return ret[0]
@@ -895,11 +838,12 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         self.move_gohome(speed=speed, mvacc=mvacc, mvtime=mvtime, is_radian=is_radian, wait=wait, timeout=timeout)
         logger.info('reset--end')
 
-    @xarm_is_ready(_type='set')
-    def set_joints_torque(self, joints_torque):
-        ret = self.arm_cmd.set_servot(joints_torque)
-        self.log_api_info('API -> set_joints_torque -> code={}, joints_torque={}'.format(ret[0], joints_torque), code=ret[0])
-        return ret[0]
+    # # This interface is no longer supported
+    # @xarm_is_ready(_type='set')
+    # def set_joints_torque(self, joints_torque):
+    #     ret = self.arm_cmd.set_servot(joints_torque)
+    #     self.log_api_info('API -> set_joints_torque -> code={}, joints_torque={}'.format(ret[0], joints_torque), code=ret[0])
+    #     return ret[0]
 
     @xarm_is_connected(_type='get')
     def get_joints_torque(self, servo_id=None):
@@ -923,16 +867,17 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         self.log_api_info('API -> set_safe_level -> code={}, level={}'.format(ret[0], level), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
     def set_pause_time(self, sltime, wait=False):
         assert isinstance(sltime, (int, float))
         ret = self.arm_cmd.sleep_instruction(sltime)
         if wait:
             time.sleep(sltime)
         else:
-            if time.time() >= self._sleep_finish_time:
-                self._sleep_finish_time = time.time() + sltime
+            if time.monotonic() >= self._sleep_finish_time:
+                self._sleep_finish_time = time.monotonic() + sltime
             else:
                 self._sleep_finish_time += sltime
         self.log_api_info('API -> set_pause_time -> code={}, sltime={}'.format(ret[0], sltime), code=ret[0])
@@ -941,101 +886,99 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
     def set_sleep_time(self, sltime, wait=False):
         return self.set_pause_time(sltime, wait)
 
+    @xarm_wait_until_not_pause
     @xarm_is_connected(_type='set')
-    @xarm_is_pause(_type='set')
-    def set_tcp_offset(self, offset, is_radian=None, **kwargs):
+    def set_tcp_offset(self, offset, is_radian=None, wait=True, **kwargs):
         is_radian = self._default_is_radian if is_radian is None else is_radian
         assert isinstance(offset, Iterable) and len(offset) >= 6
         tcp_offset = [0] * 6
-        for i in range(len(offset)):
-            if not offset[i]:
-                continue
-            if i < 3:
-                tcp_offset[i] = offset[i]
-            elif i < 6:
-                if not is_radian:
-                    tcp_offset[i] = math.radians(offset[i])
-                else:
-                    tcp_offset[i] = offset[i]
-        if kwargs.get('wait', False):
-            self.wait_move()
+        for i in range(min(len(offset), 6)):
+            tcp_offset[i] = to_radian(offset[i], is_radian or i <= 2)
+        if wait:
+            if self._support_feedback:
+                self.wait_all_task_finish()
+            else:
+                self.wait_move()
         ret = self.arm_cmd.set_tcp_offset(tcp_offset)
         self.log_api_info('API -> set_tcp_offset -> code={}, offset={}'.format(ret[0], tcp_offset), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
     def set_tcp_jerk(self, jerk):
         ret = self.arm_cmd.set_tcp_jerk(jerk)
         self.log_api_info('API -> set_tcp_jerk -> code={}, jerk={}'.format(ret[0], jerk), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
     def set_tcp_maxacc(self, acc):
         ret = self.arm_cmd.set_tcp_maxacc(acc)
         self.log_api_info('API -> set_tcp_maxacc -> code={}, maxacc={}'.format(ret[0], acc), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
     def set_joint_jerk(self, jerk, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        _jerk = jerk
-        if not is_radian:
-            _jerk = math.radians(_jerk)
-        ret = self.arm_cmd.set_joint_jerk(_jerk)
-        self.log_api_info('API -> set_joint_jerk -> code={}, jerk={}'.format(ret[0], _jerk), code=ret[0])
+        jerk = to_radian(jerk, is_radian)
+        ret = self.arm_cmd.set_joint_jerk(jerk)
+        self.log_api_info('API -> set_joint_jerk -> code={}, jerk={}'.format(ret[0], jerk), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
-    def set_joint_maxacc(self, acc, is_radian=None):
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
+    def set_joint_maxacc(self, maxacc, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        _acc = acc
-        if not is_radian:
-            _acc = math.radians(acc)
-        ret = self.arm_cmd.set_joint_maxacc(_acc)
-        self.log_api_info('API -> set_joint_maxacc -> code={}, maxacc={}'.format(ret[0], acc), code=ret[0])
+        maxacc = to_radian(maxacc, is_radian)
+        ret = self.arm_cmd.set_joint_maxacc(maxacc)
+        self.log_api_info('API -> set_joint_maxacc -> code={}, maxacc={}'.format(ret[0], maxacc), code=ret[0])
         return ret[0]
 
-    # @xarm_is_connected(_type='set')
-    # @xarm_is_pause(_type='set')
-    # @xarm_wait_until_cmdnum_lt_max(only_wait=False)
-    # def set_tcp_load(self, weight, center_of_gravity):
-    #     if compare_version(self.version_number, (0, 2, 0)):
-    #         _center_of_gravity = center_of_gravity
-    #     else:
-    #         _center_of_gravity = [item / 1000.0 for item in center_of_gravity]
-    #     ret = self.arm_cmd.set_tcp_load(weight, _center_of_gravity)
-    #     self.log_api_info('API -> set_tcp_load -> code={}, weight={}, center={}'.format(ret[0], weight, _center_of_gravity), code=ret[0])
-    #     return ret[0]
-
+    @xarm_wait_until_not_pause
     @xarm_is_connected(_type='set')
-    @xarm_is_pause(_type='set')
-    def set_collision_sensitivity(self, value):
+    def set_collision_sensitivity(self, value, wait=True):
         assert isinstance(value, int) and 0 <= value <= 5
+        if self._support_feedback:
+            self.wait_all_task_finish()
+        else:
+            self.wait_move()
         ret = self.arm_cmd.set_collis_sens(value)
+        self.set_state(0)
         self.log_api_info('API -> set_collision_sensitivity -> code={}, sensitivity={}'.format(ret[0], value), code=ret[0])
         return ret[0]
 
+    @xarm_wait_until_not_pause
     @xarm_is_connected(_type='set')
-    @xarm_is_pause(_type='set')
-    def set_teach_sensitivity(self, value):
+    def set_teach_sensitivity(self, value, wait=True):
         assert isinstance(value, int) and 1 <= value <= 5
+        if wait:
+            if self._support_feedback:
+                self.wait_all_task_finish()
+            else:
+                self.wait_move()
         ret = self.arm_cmd.set_teach_sens(value)
         self.log_api_info('API -> set_teach_sensitivity -> code={}, sensitivity={}'.format(ret[0], value), code=ret[0])
         return ret[0]
 
+    @xarm_wait_until_not_pause
     @xarm_is_connected(_type='set')
-    @xarm_is_pause(_type='set')
-    def set_gravity_direction(self, direction):
+    def set_gravity_direction(self, direction, wait=True):
+        if wait:
+            if self._support_feedback:
+                self.wait_all_task_finish()
+            else:
+                self.wait_move()
         ret = self.arm_cmd.set_gravity_dir(direction[:3])
         self.log_api_info('API -> set_gravity_direction -> code={}, direction={}'.format(ret[0], direction), code=ret[0])
         return ret[0]
 
+    @xarm_wait_until_not_pause
     @xarm_is_connected(_type='set')
-    @xarm_is_pause(_type='set')
     def set_mount_direction(self, base_tilt_deg, rotation_deg, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
         t1 = base_tilt_deg
@@ -1085,9 +1028,8 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         input_is_radian = self._default_is_radian if input_is_radian is None else input_is_radian
         return_is_radian = self._default_is_radian if return_is_radian is None else return_is_radian
         assert len(pose) >= 6
-        if not input_is_radian:
-            pose = [pose[i] if i < 3 else math.radians(pose[i]) for i in range(6)]
-        ret = self.arm_cmd.get_ik(pose)
+        tcp_pose = [to_radian(pose[i], input_is_radian or i <= 2) for i in range(6)]
+        ret = self.arm_cmd.get_ik(tcp_pose)
         angles = []
         ret[0] = self._check_code(ret[0])
         if ret[0] == 0:
@@ -1102,14 +1044,11 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         input_is_radian = self._default_is_radian if input_is_radian is None else input_is_radian
         return_is_radian = self._default_is_radian if return_is_radian is None else return_is_radian
         # assert len(angles) >= 7
-        if not input_is_radian:
-            angles = [math.radians(angles[i]) for i in range(len(angles))]
-
-        new_angles = [0] * 7
+        joints = [0] * 7
         for i in range(min(len(angles), 7)):
-            new_angles[i] = angles[i]
+            joints[i] = to_radian(angles[i], input_is_radian)
 
-        ret = self.arm_cmd.get_fk(new_angles)
+        ret = self.arm_cmd.get_fk(joints)
         pose = []
         ret[0] = self._check_code(ret[0])
         if ret[0] == 0:
@@ -1123,14 +1062,8 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
     def is_tcp_limit(self, pose, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
         assert len(pose) >= 6
-        for i in range(6):
-            if isinstance(pose[i], str):
-                pose[i] = float(pose[i])
-            if pose[i] is None:
-                pose[i] = self._last_position[i]
-            elif i > 2 and not is_radian:
-                pose[i] = math.radians(pose[i])
-        ret = self.arm_cmd.is_tcp_limit(pose)
+        tcp_pose = [to_radian(pose[i], is_radian or i <= 2, self._last_position[i]) for i in range(6)]
+        ret = self.arm_cmd.is_tcp_limit(tcp_pose)
         self.log_api_info('API -> is_tcp_limit -> code={}, limit={}'.format(ret[0], ret[1]), code=ret[0])
         ret[0] = self._check_code(ret[0])
         if ret[0] == 0:
@@ -1142,19 +1075,11 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
     def is_joint_limit(self, joint, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
         # assert len(joint) >= 7
-        for i in range(len(joint)):
-            if isinstance(joint[i], str):
-                joint[i] = float(joint[i])
-            if joint[i] is None:
-                joint[i] = self._last_angles[i]
-            elif not is_radian:
-                joint[i] = math.radians(joint[i])
-
-        new_angles = [0] * 7
+        joints = [0] * 7
         for i in range(min(len(joint), 7)):
-            new_angles[i] = joint[i]
+            joints[i] = to_radian(joint[i], is_radian, self._last_angles[i])
 
-        ret = self.arm_cmd.is_joint_limit(new_angles)
+        ret = self.arm_cmd.is_joint_limit(joints)
         self.log_api_info('API -> is_joint_limit -> code={}, limit={}'.format(ret[0], ret[1]), code=ret[0])
         ret[0] = self._check_code(ret[0])
         if ret[0] == 0:
@@ -1165,8 +1090,8 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
     def emergency_stop(self):
         logger.info('emergency_stop--begin')
         self.set_state(4)
-        expired = time.time() + 3
-        while self.state not in [4] and time.time() < expired:
+        expired = time.monotonic() + 3
+        while self.state not in [4] and time.monotonic() < expired:
             self.set_state(4)
             time.sleep(0.1)
         self._sleep_finish_time = 0
@@ -1237,9 +1162,9 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         def __handle_gcode_h(num):
             if num == 1:  # H1 get_version, ex: H1
                 ret = self.get_version()
-            elif num == 10:  # H10 shutdown_system, ex: H10 V{}
+            elif num == 10:  # H10 system_control, ex: H10 V{}
                 value = gcode_p.get_int_value(command, default=0)
-                ret = self.shutdown_system(value)
+                ret = self.system_control(value)
             elif num == 11:  # H11 motion_enable, ex: H11 I{id} V{enable}
                 value = gcode_p.get_int_value(command)
                 servo_id = gcode_p.get_id_num(command, default=0)
@@ -1524,25 +1449,30 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         """
         try:
             if not os.path.exists(path):
-                path = os.path.join(os.path.expanduser('~'), '.UFACTORY', 'projects', 'test', 'xarm{}'.format(self.axis), 'app', 'myapp', path)
+                dir_name = 'lite6' if self.axis == 6 and self.device_type == 9 else '850' if self.axis == 6 and self.device_type == 12 else 'xarm7T' if self.axis == 7 and self.device_type == 13 else 'xarm{}'.format(self.axis)
+                path = os.path.join(os.path.expanduser('~'), '.UFACTORY', 'projects', 'test', dir_name, 'app', 'myapp', path) # home/uf
             if os.path.isdir(path):
                 path = os.path.join(path, 'app.xml')
             if not os.path.exists(path):
-                raise FileNotFoundError
+                raise FileNotFoundError('{} is not found'.format(path))
             blockly_tool = BlocklyTool(path)
-            succeed = blockly_tool.to_python(arm=self._api_instance, **kwargs)
+            succeed = blockly_tool.to_python(arm=self._api_instance, is_exec=True, **kwargs)
             if succeed:
                 times = kwargs.get('times', 1)
                 highlight_callback = kwargs.get('highlight_callback', None)
                 blockly_print = kwargs.get('blockly_print', print)
+                blockly_exec = kwargs.get('blockly_exec', None)
+                blockly_run_gcode = kwargs.get('blockly_run_gcode', None)
                 connect_changed_callbacks = self._report_callbacks[self.REPORT_CONNECT_CHANGED_ID].copy()
                 state_changed_callbacks = self._report_callbacks[self.REPORT_STATE_CHANGED_ID].copy()
                 error_warn_changed_callbacks = self._report_callbacks[self.REPORT_ERROR_WARN_CHANGED_ID].copy()
                 count_changed_callbacks = self._report_callbacks[self.REPORT_COUNT_CHANGED_ID].copy()
                 code = APIState.NORMAL
                 try:
-                    for i in range(times):
-                        exec(blockly_tool.codes, {'arm': self._api_instance, 'highlight_callback': highlight_callback, 'print': blockly_print})
+                    for _ in range(times):
+                        exec(blockly_tool.codes, {'arm': self._api_instance, 'highlight_callback': highlight_callback,
+                                                  'print': blockly_print, 'run_blockly': blockly_exec, 
+                                                  'start_run_blockly': blockly_exec, 'start_run_gcode':blockly_run_gcode})
                 except Exception as e:
                     code = APIState.RUN_BLOCKLY_EXCEPTION
                     blockly_print('run blockly app error: {}'.format(e))
@@ -1570,16 +1500,18 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         self.log_api_info('API -> reload_dynamics -> code={}'.format(ret[0]), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
     def set_counter_reset(self):
         ret = self.arm_cmd.cnter_reset()
         ret[0] = self._check_code(ret[0])
         self.log_api_info('API -> set_counter_reset -> code={}'.format(ret[0]), code=ret[0])
         return ret[0]
 
-    @xarm_is_connected(_type='set')
-    @xarm_wait_until_cmdnum_lt_max(only_wait=False)
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
     def set_counter_increase(self, val=1):
         ret = self.arm_cmd.cnter_plus()
         ret[0] = self._check_code(ret[0])
@@ -1723,6 +1655,12 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         ret[0] = self._check_code(ret[0])
         return ret[0], ret[1:]
 
+    @xarm_is_connected(_type='get')
+    def get_movement(self):
+        ret = self.arm_cmd.get_movement()
+        ret[0] = self._check_code(ret[0])
+        return ret[0], ret[1]
+    
     @xarm_is_connected(_type='set')
     def vc_set_joint_velocity(self, speeds, is_radian=None, is_sync=True, check_mode=True, duration=-1):
         # if check_mode and not self._check_mode_is_correct(4):
@@ -1732,9 +1670,10 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         for i, spd in enumerate(speeds):
             if i >= 7:
                 break
-            jnt_v[i] = spd if is_radian else math.radians(spd)
+            jnt_v[i] = to_radian(spd, is_radian)
 
         ret = self.arm_cmd.vc_set_jointv(jnt_v, 1 if is_sync else 0, duration if self.version_is_ge(1, 8, 0) else -1)
+        ret[0] = self._check_code(ret[0], is_move_cmd=True, mode=4)
         self.log_api_info('API -> vc_set_joint_velocity -> code={}, speeds={}, is_sync={}'.format(
             ret[0], jnt_v, is_sync
         ), code=ret[0])
@@ -1749,8 +1688,9 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         for i, spd in enumerate(speeds):
             if i >= 6:
                 break
-            line_v[i] = spd if i < 3 or is_radian else math.radians(spd)
+            line_v[i] = spd if i <= 2 else to_radian(spd, is_radian)
         ret = self.arm_cmd.vc_set_linev(line_v, 1 if is_tool_coord else 0, duration if self.version_is_ge(1, 8, 0) else -1)
+        ret[0] = self._check_code(ret[0], is_move_cmd=True, mode=5)
         self.log_api_info('API -> vc_set_cartesian_velocity -> code={}, speeds={}, is_tool_coord={}'.format(
             ret[0], line_v, is_tool_coord
         ), code=ret[0])
@@ -1763,7 +1703,7 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         points = []
         for i in range(4):
             assert len(four_points[i]) >= 6, 'Each TCP point in the parameter four_points must contain x/y/z/roll/pitch/yaw'
-            points.append([four_points[i][j] if j < 3 or is_radian else math.radians(four_points[i][j]) for j in range(6)])
+            points.append([four_points[i][j] if j <= 2 else to_radian(four_points[i][j], is_radian) for j in range(6)])
         ret = self.arm_cmd.cali_tcp_pose(points)
         ret[0] = self._check_code(ret[0])
         return ret[0], ret[1:]
@@ -1772,8 +1712,8 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
     def calibrate_tcp_orientation_offset(self, rpy_be, rpy_bt, input_is_radian=None, return_is_radian=None):
         input_is_radian = self._default_is_radian if input_is_radian is None else input_is_radian
         return_is_radian = self._default_is_radian if return_is_radian is None else return_is_radian
-        rpy_be_ = [rpy_be[i] if input_is_radian else math.radians(rpy_be[i]) for i in range(3)]
-        rpy_bt_ = [rpy_bt[i] if input_is_radian else math.radians(rpy_bt[i]) for i in range(3)]
+        rpy_be_ = [to_radian(rpy_be[i], input_is_radian) for i in range(3)]
+        rpy_bt_ = [to_radian(rpy_bt[i], input_is_radian) for i in range(3)]
         ret = self.arm_cmd.cali_tcp_orient(rpy_be_, rpy_bt_)
         ret[0] = self._check_code(ret[0])
         return ret[0], [ret[i+1] if return_is_radian else math.degrees(ret[i+1]) for i in range(3)]
@@ -1786,11 +1726,11 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
         points = []
         for i in range(3):
             assert len(three_points[i]) >= 6, 'Each TCP point in the parameter three_points must contain x/y/z/roll/pitch/yaw'
-            points.append([three_points[i][j] if j < 3 or input_is_radian else math.radians(three_points[i][j]) for j in range(6)])
+            points.append([three_points[i][j] if j <= 2 else to_radian(three_points[i][j], input_is_radian) for j in range(6)])
         ret = self.arm_cmd.cali_user_orient(points, mode=mode, trust_ind=trust_ind)
         ret[0] = self._check_code(ret[0])
         return ret[0], [ret[i+1] if return_is_radian else math.degrees(ret[i+1]) for i in range(3)]
-    
+
     @xarm_is_connected(_type='get')
     def calibrate_user_coordinate_offset(self, rpy_ub, pos_b_uorg, is_radian=None):
         is_radian = self._default_is_radian if is_radian is None else is_radian
@@ -1808,11 +1748,111 @@ class XArm(Gripper, Servo, Record, RobotIQ, BaseBoard, Track, FtSensor):
 
     @xarm_is_connected(_type='set')
     def get_max_joint_velocity(self, eveloc, joint_pos, is_radian=None):
+        """
+        Obtain maximum joint angular velocity
+        :param eveloc: Maximum TCP speed
+        :param joint_pos: joint angle list (unit: rad if is_radian is True else °), angle should be a list of values
+            whose length is the number of joints like [axis-1, axis-2, axis-3, axis-3, axis-4, axis-5, axis-6, axis-7]
+        :param is_radian: the max_joint_speed of the states is in radians or not, default is self.default_is_radian
+        """
         is_radian = self._default_is_radian if is_radian is None else is_radian
-        joint_pos = [joint_pos[i] if is_radian else math.radians(joint_pos[i]) for i in range(7)]
-        return self.arm_cmd.get_max_joint_velocity(eveloc, joint_pos)
+        joints = [0] * 7
+        for i in range(min(len(joint_pos), 7)):
+            joints[i] = to_radian(joint_pos[i], is_radian)
+        return self.arm_cmd.get_max_joint_velocity(eveloc, joints)
 
     @xarm_is_connected(_type='get')
-    def iden_tcp_load(self):
-        ret = self.arm_cmd.iden_tcp_load()
+    def iden_tcp_load(self, estimated_mass=0):
+        protocol_identifier = self.arm_cmd.get_protocol_identifier()
+        self.arm_cmd.set_protocol_identifier(2)
+        self._keep_heart = False
+        if self.version_is_ge(1, 9, 100) and estimated_mass <= 0:
+            estimated_mass = 0.5
+        ret = self.arm_cmd.iden_tcp_load(estimated_mass)
+        self.arm_cmd.set_protocol_identifier(protocol_identifier)
+        self._keep_heart = True
+        self.log_api_info('API -> iden_tcp_load -> code={}'.format(ret[0]), code=ret[0])
         return self._check_code(ret[0]), ret[1:5]
+
+    @xarm_is_connected(_type='set')
+    def set_cartesian_velo_continuous(self, on_off):
+        ret = self.arm_cmd.set_cartesian_velo_continuous(int(on_off))
+        ret[0] = self._check_code(ret[0])
+        self.log_api_info('API -> set_cartesian_velo_continuous({}) -> code={}'.format(on_off, ret[0]), code=ret[0])
+        return ret[0]
+
+    @xarm_is_connected(_type='set')
+    def set_allow_approx_motion(self, on_off):
+        ret = self.arm_cmd.set_allow_approx_motion(int(on_off))
+        ret[0] = self._check_code(ret[0])
+        self.log_api_info('API -> set_allow_approx_motion({}) -> code={}'.format(on_off, ret[0]), code=ret[0])
+        return ret[0]
+
+    @xarm_is_connected(_type='get')
+    def get_allow_approx_motion(self):
+        ret = self.arm_cmd.get_allow_approx_motion()
+        ret[0] = self._check_code(ret[0])
+        self.log_api_info('API -> get_allow_approx_motion() -> code={}'.format(ret[0]), code=ret[0])
+        return ret[0], ret[-1]
+    
+    @xarm_is_connected(_type='get')
+    def iden_joint_friction(self, sn=None):
+        if sn is None:
+            code, sn = self.get_robot_sn()
+            if code != 0:
+                self.log_api_info('iden_joint_friction -> get_robot_sn failed, code={}'.format(code), code=code)
+                return APIState.API_EXCEPTION, -1
+        if len(sn) != 14:
+            self.log_api_info('iden_joint_friction, sn is not correct, sn={}'.format(sn), code=APIState.API_EXCEPTION)
+            return APIState.API_EXCEPTION, -1
+        sn = sn.upper()
+        axis_map = {5: 'F', 6: 'I', 7: 'S'}
+        valid_850 = self.is_850 and sn[0] == 'F' and sn[1] == 'X'
+        valid_lite = self.is_lite6 and sn[0] == 'L' and sn[1] == 'I'
+        valid_xarm7t = not self.is_850 and not self.is_lite6 and sn[0] == 'C' and sn[1] == 'S'
+        valid_xarm = not self.is_850 and not self.is_lite6 and sn[0] == 'X' and sn[1] == axis_map.get(self.axis, '')
+        if not (valid_850 or valid_lite or valid_xarm or valid_xarm7t):
+            self.log_api_info('iden_joint_friction, sn is not correct, axis={}, type={}, sn={}'.format(self.axis, self.device_type, sn), code=APIState.API_EXCEPTION)
+            return APIState.API_EXCEPTION, -1
+
+        protocol_identifier = self.arm_cmd.get_protocol_identifier()
+        self.arm_cmd.set_protocol_identifier(2)
+        self._keep_heart = False
+        ret = self.arm_cmd.iden_joint_friction(sn)
+        self.arm_cmd.set_protocol_identifier(protocol_identifier)
+        self._keep_heart = True
+        self.log_api_info('API -> iden_joint_friction -> code={}'.format(ret[0]), code=ret[0])
+        return self._check_code(ret[0]), 0 if int(ret[1]) == 0 else -1
+
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
+    def wait_all_task_finish(self, timeout=None, **kwargs):
+        if not self._support_feedback:
+            return APIState.CMD_NOT_EXIST
+        wait = kwargs.pop('wait', True)
+        feedback_key, studio_wait = self._gen_feedback_key(wait, **kwargs)
+        ret = self.arm_cmd.check_feedback(feedback_key=feedback_key)
+        trans_id = self._get_feedback_transid(feedback_key, studio_wait)
+        ret[0] = self._check_code(ret[0])
+        if wait and ret[0] == 0:
+            ret[0] = self._wait_feedback(timeout, trans_id=trans_id, ignore_log=True)[0]
+            if ret[0] == 0:
+                time.sleep(0.5)
+        return ret[0]
+
+    @xarm_wait_until_not_pause
+    @xarm_wait_until_cmdnum_lt_max
+    @xarm_is_ready(_type='set')
+    def send_hex_cmd(self, datas, timeout=10):
+        ret = self.arm_cmd.send_hex_cmd(datas, timeout)
+        return ret[1:]
+        # ret = self.arm_cmd.send_hex_request(datas)
+        # if ret == -1:
+        #     return [XCONF.UxbusState.ERR_NOTTCP]
+        # ret = self.arm_cmd.recv_hex_request(ret, timeout)
+        # return ret
+
+    @xarm_is_connected(_type='get')
+    def get_trans_id(self):
+        return self.arm_cmd.get_trans_id()
