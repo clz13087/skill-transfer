@@ -8,7 +8,6 @@ from enum import Flag
 from turtle import right
 
 import numpy as np
-from cv2 import transform
 from matplotlib.pyplot import flag
 
 # ----- Custom class ----- #

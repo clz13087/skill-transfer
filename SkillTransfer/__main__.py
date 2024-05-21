@@ -1,6 +1,6 @@
 from ctypes import windll
 from platform import processor
-from SkillTransfer.Processor.Processor import ProcessorClass
+from Processor.Processor import ProcessorClass
 
 def main():
     processor = ProcessorClass()

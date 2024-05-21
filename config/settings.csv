@@ -1,8 +1,8 @@
-xArmIPAddress_left,192.168.1.244
+xArmIPAddress_left,192.168.1.196
 initialpos_left,300,200,150
 initialrot_left,180,-45,90
 
-xArmIPAddress_right,192.168.1.199
+xArmIPAddress_right,192.168.1.240
 initialpos_right,300,-200,150
 initialrot_right,180,45,90
 
@@ -29,11 +29,11 @@ bendingSensorCom6,COM14
 isExportData,False
 dirPath,C:/Users/SANOLAB/Desktop/tsugumi/expertdata/tsugumi/21回目
 
-participantNum,
-gripperNum,
-otherRigidBodyNum,
-robotNum,
+participantNum,1
+gripperNum,0
+otherRigidBodyNum,1
+robotNum,1
 
-weightListPos,0,1,0,0,0,0
-weightListRot,0,1,0,0,0,0
-weightGripperList,1,1,0,0,0,0
+weightListPos,1,0,0,0,0,0
+weightListRot,1,0,0,0,0,0
+weightGripperList,0,0,0,0,0,0
