@@ -1,6 +1,6 @@
 from math import pi
 import numpy as np
-from MotionFilter.MotionFilter import MotionFilter
+from Filter.Filter import MotionFilter
 from FileIO.FileIO import FileIO
 
 

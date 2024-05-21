@@ -16,7 +16,7 @@ from FileIO.FileIO import FileIO
 from Participant.ParticipantMotion import ParticipantMotion
 from Recorder.DataRecord import DataRecordManager
 from Robot.xArmTransform import xArmTransform
-from xarm.wrapper import XArmAPI
+from xarm.wrapper.xarm_api import XArmAPI
 
 # ---------- Settings: Input mode ---------- #
 motionDataInputMode = "optitrack"
