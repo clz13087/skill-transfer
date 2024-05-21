@@ -22,7 +22,7 @@ class xArmTransform:
 
     def __init__(self, initpos: list, initrot: list, mount: str):
         self.n = 4
-        self.fp = 10
+        self.fp = 40
         self.fs = 180
         self.filter_robot = MotionFilter()
         self.filter_robot.InitLowPassFilterWithOrder(self.fs, self.fp, self.n)

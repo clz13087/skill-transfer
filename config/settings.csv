@@ -10,7 +10,7 @@ motiveServerIPAddress,133.68.108.51
 motiveLocalIPAddress,133.68.108.51
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
-frameRate,200
+frameRate,150
 
 bendingSensorPortParticipant1,9600
 bendingSensorPortParticipant2,9600
