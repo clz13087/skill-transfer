@@ -12,7 +12,6 @@ from cv2 import transform
 from matplotlib.pyplot import flag
 
 # ----- Custom class ----- #
-from Gripper.Gripper import BendingSensorManager
 from Robot.CAMotion import CAMotion
 from FileIO.FileIO import FileIO
 from Participant.ParticipantMotion import ParticipantMotion
