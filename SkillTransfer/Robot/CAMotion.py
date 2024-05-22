@@ -101,7 +101,7 @@ class CAMotion:
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
             
             if i % 2 == 0:
-                sharedRotation_euler_left += self.Quaternion2Euler(weightedRot)
+                sharedRotation_euler_left += self.Quaternion2Euler(weightedRot) 
 
             elif i % 2 == 1:
                 sharedRotation_euler_right += self.Quaternion2Euler(weightedRot)

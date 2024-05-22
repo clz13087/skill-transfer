@@ -229,9 +229,6 @@ class ProcessorClass:
 
                     # ----- Start streaming ----- #
                     elif keycode == "s":
-                        caMotion.SetOriginPosition(participantMotion.LocalPosition())
-                        caMotion.SetInversedMatrix(participantMotion.LocalRotation())
-
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
@@ -246,8 +243,19 @@ class ProcessorClass:
                         weightGripperListstr = self.weightGripperList[0]
                         weightGripperList = list(map(float, weightGripperListstr))
 
-                        robotpos, robotrot = caMotion.participant2robot(participantMotion.LocalPosition(), participantMotion.LocalRotation(), weightList)
+                        caMotion.SetOriginPosition(participantMotion.LocalPosition())
+                        caMotion.SetInversedMatrix(participantMotion.LocalRotation())
                         participantMotion.SetInitialBendingValue()
+
+                        relativePosition = caMotion.GetRelativePosition(position=participantMotion.LocalPosition())
+                        relativeRotation = caMotion.GetRelativeRotation(rotation=participantMotion.LocalRotation())
+
+                        robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
+
+                        if isEnablexArm:
+                            # ----- Send to xArm ----- #
+                            arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                            arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                         isMoving = True
                         taskStartTime = time.perf_counter()
