@@ -164,7 +164,7 @@ class ProcessorClass:
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
-                        arm_1.set_servo_cartesian(transform_left.Transform_LPF(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                        arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Bending sensor ----- #
