@@ -1,6 +1,6 @@
 xArmIPAddress_left,192.168.1.196
 initialpos_left,350,200,150
-initialrot_left,180,0,-90
+initialrot_left,135,0,-45
 
 xArmIPAddress_right,192.168.1.240
 initialpos_right,300,-200,150
@@ -27,13 +27,13 @@ bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
 isExportData,False
-dirPath,C:/Users/SANOLAB/Desktop/tsugumi/expertdata/tsugumi/21回目
+dirPath,C:/Users/hapticslab/tsugumi/skilltransfer/practice/1回目
 
 participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
-weightListPos,0,0,0,0,0,0
+weightListPos,1,0,0,0,0,0
 weightListRot,1,0,0,0,0,0
 weightGripperList,0,0,0,0,0,0
