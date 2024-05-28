@@ -1,13 +1,13 @@
-xArmIPAddress_left,192.168.1.196
-initialpos_left,350,200,150
-initialrot_left,135,0,-45
+xArmIPAddress_left,192.168.1.244
+initialpos_left,350,100,150
+initialrot_left,180,0,90
 
-xArmIPAddress_right,192.168.1.240
-initialpos_right,300,-200,150
+xArmIPAddress_right,192.168.1.199
+initialpos_right,300,-100,150
 initialrot_right,180,0,-90
 
-motiveServerIPAddress,133.68.108.51
-motiveLocalIPAddress,133.68.108.51
+motiveServerIPAddress,133.68.108.109
+motiveLocalIPAddress,133.68.108.109
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
 frameRate,150
