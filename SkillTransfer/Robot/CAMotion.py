@@ -110,7 +110,8 @@ class CAMotion:
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
-        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+        # self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+        self.rotarm = dict(robot1=self.Quaternion2Euler(rotation["participant1"]), robot2=sharedRotation_euler_right)
 
         return self.posarm, self.rotarm
 
