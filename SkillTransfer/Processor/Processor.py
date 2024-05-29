@@ -131,7 +131,7 @@ class ProcessorClass:
 
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum)
-        transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, mount="left")
+        transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, mount="right")
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, mount="right")
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, gripperInputSystem=gripperDataInputMode, bendingSensorNum=self.gripperNum, BendingSensor_ConnectionMethod="wired", bendingSensorUdpIpAddress=self.wirelessIpAddress, bendingSensorUdpPort=self.bendingSensorPorts, bendingSensorSerialCOMs=self.bendingSensorComs)
