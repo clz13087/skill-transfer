@@ -14,12 +14,12 @@ class xArmTransform:
     roll, pitch, yaw = 0, 0, 0
 
     # ----- Minimum limitation ----- #
-    __minX, __minY, __minZ = -999, -999, -999
-    __minRoll, __minPitch, __minYaw = -180, -180, -180
+    __minX, __minY, __minZ = -9999, -9999, -9999
+    __minRoll, __minPitch, __minYaw = -9999, -9999, -9999
 
     # ----- Maximum limitation ----- #
-    __maxX, __maxY, __maxZ = 999, 999, 999
-    __maxRoll, __maxPitch, __maxYaw = 180, 180, 180
+    __maxX, __maxY, __maxZ = 9999, 9999, 9999
+    __maxRoll, __maxPitch, __maxYaw = 9999, 9999, 9999
 
     def __init__(self, initpos: list, initrot: list, mount: str):
         self.n = 4
