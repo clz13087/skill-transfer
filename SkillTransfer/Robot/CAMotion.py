@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 import quaternion
 import scipy.spatial.transform as scitransform
@@ -38,7 +39,7 @@ class CAMotion:
 
             self.beforeRotations["participant" + str(i + 1)] = np.array([0, 0, 0, 1])
             self.weightedRotations["participant" + str(i + 1)] = np.array([0, 0, 0, 1])
-        
+
         for i in range(otherRigidBodyNum):
             self.originPositions["otherRigidBody" + str(i + 1)] = np.zeros(3)
             self.inversedMatrix["otherRigidBody" + str(i + 1)] = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
@@ -72,7 +73,7 @@ class CAMotion:
 
             if i % 2 == 0:
                 sharedPosition_left += weightedPos
-            
+
             elif i % 2 == 1:
                 sharedPosition_right += weightedPos
 
@@ -99,9 +100,9 @@ class CAMotion:
                                    [-nqy, nqx, nqw, nqz],
                                    [-nqx, -nqy, -nqz, nqw]])
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
-            
+
             if i % 2 == 0:
-                sharedRotation_euler_left += self.Quaternion2Euler(weightedRot) 
+                sharedRotation_euler_left += self.Quaternion2Euler(weightedRot)
 
             elif i % 2 == 1:
                 sharedRotation_euler_right += self.Quaternion2Euler(weightedRot)
@@ -111,7 +112,7 @@ class CAMotion:
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
         # self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
-        self.rotarm = dict(robot1=self.Quaternion2Euler(rotation["participant1"]), robot2=sharedRotation_euler_right)
+        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
 
         return self.posarm, self.rotarm
 
@@ -251,7 +252,7 @@ class CAMotion:
         relativeRot = {}
         for i in range(self.participantNum):
             relativeRot["participant" + str(i + 1)] = np.dot(self.inversedMatrix["participant" + str(i + 1)], rotation["participant" + str(i + 1)])
-        
+
         for i in range(self.otherRigidBodyNum):
             relativeRot["otherRigidBody" + str(i + 1)] = np.dot(self.inversedMatrix["otherRigidBody" + str(i + 1)], rotation["otherRigidBody" + str(i + 1)])
 
