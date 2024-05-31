@@ -8,13 +8,12 @@ from enum import Flag
 from turtle import right
 
 import numpy as np
-from matplotlib.pyplot import flag
-
-# ----- Custom class ----- #
-from Robot.CAMotion import CAMotion
 from FileIO.FileIO import FileIO
+from matplotlib.pyplot import flag
 from Participant.ParticipantMotion import ParticipantMotion
 from Recorder.DataRecord import DataRecordManager
+# ----- Custom class ----- #
+from Robot.CAMotion import CAMotion
 from Robot.xArmTransform import xArmTransform
 from xarm.wrapper import XArmAPI
 
@@ -34,7 +33,7 @@ class ProcessorClass:
         xArmIP_right = [addr for addr in dat if "xArmIPAddress_right" in addr[0]][0][1]
         initialpos_right = [addr for addr in dat if "initialpos_right" in addr[0]]
         initialrot_right = [addr for addr in dat if "initialrot_right" in addr[0]]
-        
+
         wirelessIP = [addr for addr in dat if "wirelessIPAddress" in addr[0]][0][1]
         localIP = [addr for addr in dat if "localIPAddress" in addr[0]][0][1]
         motiveserverIP = [addr for addr in dat if "motiveServerIPAddress" in addr[0]][0][1]
@@ -78,7 +77,7 @@ class ProcessorClass:
         self.xArmIpAddress_right = xArmIP_right
         self.initialpos_right = initialpos_right
         self.initislrot_right = initialrot_right
-        
+
         self.wirelessIpAddress = wirelessIP
         self.localIpAddress = localIP
         self.motiveserverIpAddress = motiveserverIP
@@ -179,7 +178,8 @@ class ProcessorClass:
 
                     # ----- Data recording ----- #
                     if self.isExportData:
-                        dataRecordManager.Record(relativePosition, relativeRotation, weightList, dictGripperValue_P, robotpos, robotrot, dictGripperValue_R, time.perf_counter() - taskStartTime)
+                        # dataRecordManager.Record(relativePosition, relativeRotation, weightList, dictGripperValue_P, robotpos, robotrot, dictGripperValue_R, time.perf_counter() - taskStartTime)
+                        dataRecordManager.Record(position=relativePosition, rotation=relativeRotation, weight=weightList, robotpos=robotpos, robotrot=robotrot, duration=time.perf_counter() - taskStartTime)
 
                     # ----- If xArm error has occured ----- #
                     if isEnablexArm and arm_1.has_err_warn:

@@ -27,11 +27,11 @@ bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
 isExportData,False
-dirPath,C:/Users/hapticslab/tsugumi/skilltransfer/practice/1回目
+dirPath,C:/Users/SANOLAB/Desktop/tsugumi/skilltransfer/check_accuracy/1回目
 
 participantNum,2
 gripperNum,0
-otherRigidBodyNum,0
+otherRigidBodyNum,2
 robotNum,2
 
 weightListPos,1,0,0,0,0,0

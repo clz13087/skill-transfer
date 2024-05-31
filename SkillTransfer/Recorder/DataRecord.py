@@ -2,9 +2,11 @@ import csv
 import datetime
 import os
 import threading
+
 import numpy as np
 import tqdm
 from Recorder.UDPReceive import udprecv
+
 
 class DataRecordManager:
     dictPosition = {}
@@ -66,7 +68,15 @@ class DataRecordManager:
         # streamingThread.setDaemon(True)
         # streamingThread.start()
 
-    def Record(self, position, rotation, weight, Gripper_P, robotpos, robotrot, Gripper_R, duration):
+    def Record(self,
+               position,
+               rotation,
+               weight,
+            #    Gripper_P,
+               robotpos,
+               robotrot,
+            #    Gripper_R,
+               duration):
         """
         Record the data.
 
@@ -92,17 +102,17 @@ class DataRecordManager:
             self.dictPosition["otherRigidBody" + str(i + 1)].append(position["otherRigidBody" + str(i + 1)])
             self.dictRotation["otherRigidBody" + str(i + 1)].append(rotation["otherRigidBody" + str(i + 1)])
 
-        for i in range(self.bendingSensorNum):
-            self.dictGripperValue_P["gripperValue_P" + str(i + 1)].append([Gripper_P["gripperValue" + str(i + 1)]])
+        # for i in range(self.bendingSensorNum):
+        #     self.dictGripperValue_P["gripperValue_P" + str(i + 1)].append([Gripper_P["gripperValue" + str(i + 1)]])
 
         for i in range(self.robotNum):
             self.dictRobotPosition["robot" + str(i + 1)].append(robotpos["robot" + str(i + 1)])
             self.dictRobotRotation["robot" + str(i + 1)].append(robotrot["robot" + str(i + 1)])
 
-        for i in range(self.robotNum):
-            self.dictGripperValue_R["gripperValue_R" + str(i + 1)].append([float(Gripper_R["gripperValue" + str(i + 1)])])
+        # for i in range(self.robotNum):
+        #     self.dictGripperValue_R["gripperValue_R" + str(i + 1)].append([float(Gripper_R["gripperValue" + str(i + 1)])])
 
-        self.dictRobotHead.append(self.udp.robot_head)
+        # self.dictRobotHead.append(self.udp.robot_head)
 
     def ExportSelf(self, dirPath: str = "ExportData", participant: str = "", conditions: str = "", number: str = ""):
         """
@@ -115,7 +125,7 @@ class DataRecordManager:
         """
         transformHeader = ["time", "x", "y", "z", "qx", "qy", "qz", "qw", "weightpos", "weightrot"]
         GripperHeader = ["GripperValue"]
-        robotHeader = ["time", "x", "y", "z", "qx", "qy", "qz", "qw"]
+        robotHeader = ["time", "x", "y", "z", "r", "p", "y", "qw"]
         headHeader = ["time", "x", "y", "z", "rx", "ry", "rz"]
 
         print("\n---------- DataRecordManager.ExportSelf ----------")
@@ -134,7 +144,7 @@ class DataRecordManager:
         for i in tqdm.tqdm(range(self.otherRigidBodyNum), ncols=150):
             npDuration = np.array(self.dictDurationTime)
             npPosition = np.array(self.dictPosition["otherRigidBody" + str(i + 1)])
-            npRotation = np.array(self.dictRotation["otherRIgidBody" + str(i + 1)])
+            npRotation = np.array(self.dictRotation["otherRigidBody" + str(i + 1)])
             npRigidBodyTransform = np.concatenate([npPosition, npRotation], axis=1)
             npTimeRigidBodyTransform = np.c_[npDuration, npRigidBodyTransform]
             self.ExportAsCSV(npTimeRigidBodyTransform, dirPath, "OtherRigidBody_" + str(i + 1), participant, conditions, number, transformHeader)
@@ -158,12 +168,12 @@ class DataRecordManager:
             npGripperValue_R = np.array( self.dictGripperValue_R["gripperValue_R" + str(i + 1)])
             self.ExportAsCSV( npGripperValue_R, dirPath, "GripperValue_Robot_" + str(i + 1), participant, conditions, number, GripperHeader)
 
-        print("Writing: Head value...")
-        npDuration = np.array(self.dictDurationTime)
-        npHead = np.array(self.dictRobotHead)
-        npHeadOutput = np.concatenate([npDuration, npHead], axis=1)
-        self.ExportAsCSV(npHeadOutput, dirPath, "Head_", participant, conditions, number, headHeader)
-        print("---------- Export completed ----------\n")
+        # print("Writing: Head value...")
+        # npDuration = np.array(self.dictDurationTime)
+        # npHead = np.array(self.dictRobotHead)
+        # npHeadOutput = np.concatenate([npDuration, npHead], axis=1)
+        # self.ExportAsCSV(npHeadOutput, dirPath, "Head_", participant, conditions, number, headHeader)
+        # print("---------- Export completed ----------\n")
 
     def ExportAsCSV(self, data, dirPath, fileName, participant, conditions, number, header: list = []):
         """
