@@ -167,14 +167,14 @@ class ProcessorClass:
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Bending sensor ----- #
-                    if self.gripperNum != 0:
-                        dictGripperValue_R, dictGripperValue_P = (participantMotion.GripperControlValue(weight=weightGripperList, loopCount=self.loopCount))
+                    # if self.gripperNum != 0:
+                    #     dictGripperValue_R, dictGripperValue_P = (participantMotion.GripperControlValue(weight=weightGripperList, loopCount=self.loopCount))
 
                     # ----- Gripper control ----- #
-                    if isEnablexArm:
-                        if self.gripperNum != 0:
-                            code_1, ret_1 = arm_1.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue1"]))
-                            code_2, ret_2 = arm_2.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue2"]))
+                    # if isEnablexArm:
+                    #     if self.gripperNum != 0:
+                    #         code_1, ret_1 = arm_1.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue1"]))
+                    #         code_2, ret_2 = arm_2.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue2"]))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
