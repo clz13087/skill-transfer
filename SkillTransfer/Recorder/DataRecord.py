@@ -95,7 +95,7 @@ class DataRecordManager:
 
         for i in range(self.participantNum):
             self.dictPosition["participant" + str(i + 1)].append(position["participant" + str(i + 1)])
-            self.dictRotation["participant" + str(i + 1)].append(rotation["participant" + str(i + 1)])
+            self.dictRotation["participant" + str(i + 1)].append(self.Quaternion2Euler(q=rotation["participant" + str(i + 1)]))
             self.dictWeightPosition["participant" + str(i + 1)].append(weight[0][i])
             self.dictWeightRotation["participant" + str(i + 1)].append(weight[1][i])
 
@@ -108,7 +108,7 @@ class DataRecordManager:
 
         for i in range(self.robotNum):
             self.dictRobotPosition["robot" + str(i + 1)].append(robotpos["robot" + str(i + 1)])
-            self.dictRobotRotation["robot" + str(i + 1)].append(robotrot["robot" + str(i + 1)])
+            self.dictRobotRotation["robot" + str(i + 1)].append(self.Quaternion2Euler(q=robotrot["robot" + str(i + 1)]))
 
         # for i in range(self.robotNum):
         #     self.dictGripperValue_R["gripperValue_R" + str(i + 1)].append([float(Gripper_R["gripperValue" + str(i + 1)])])
