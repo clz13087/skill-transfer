@@ -1,8 +1,8 @@
-xArmIPAddress_left,192.168.1.244
-initialpos_left,350,100,150
+xArmIPAddress_left,192.168.1.242
+initialpos_left,300,-200,150
 initialrot_left,180,0,90
 
-xArmIPAddress_right,192.168.1.199
+xArmIPAddress_right,192.168.1.244
 initialpos_right,300,-100,150
 initialrot_right,180,0,-90
 
@@ -26,12 +26,12 @@ bendingSensorCom4,COM17
 bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
-isExportData,True
+isExportData,False
 dirPath,C:/Users/SANOLAB/Desktop/tsugumi/skilltransfer/check_accuracy/3回目
 
-participantNum,2
+participantNum,1
 gripperNum,0
-otherRigidBodyNum,2
+otherRigidBodyNum,0
 robotNum,2
 
 weightListPos,1,0,0,0,0,0
