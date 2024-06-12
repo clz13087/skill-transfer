@@ -358,12 +358,12 @@ class ProcessorClass:
             robotArm.reset(wait=True)
         print("Initialized > xArm")
 
-        robotArm.set_tgpio_modbus_baudrate(2000000)
-        robotArm.set_gripper_mode(0)
-        robotArm.set_gripper_enable(True)
-        robotArm.set_gripper_position(850, speed=5000)
-        robotArm.getset_tgpio_modbus_data(self.ConvertToModbusData(425))
-        print("Initialized > xArm gripper")
+        # robotArm.set_tgpio_modbus_baudrate(2000000)
+        # robotArm.set_gripper_mode(0)
+        # robotArm.set_gripper_enable(True)
+        # robotArm.set_gripper_position(850, speed=5000)
+        # robotArm.getset_tgpio_modbus_data(self.ConvertToModbusData(425))
+        # print("Initialized > xArm gripper")
 
         robotArm.set_mode(1)
         robotArm.set_state(state=0)
