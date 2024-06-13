@@ -3,6 +3,8 @@ import math
 import numpy as np
 import quaternion
 import scipy.spatial.transform as scitransform
+from Filter.Filter import MotionFilter
+
 
 """
 ##### IMPORTANT #####
@@ -49,6 +51,20 @@ class CAMotion:
         self.before_position = [[0, 0, 0], [0, 0, 0]]
         self.customweightPosition = [0, 0, 0]
         self.before_sharedPosition = [0, 0, 0]
+
+        n = 2
+        fp = 10
+        fs = 700
+        self.filter_FB = MotionFilter()
+        self.filter_FB.InitLowPassFilterWithOrder(fs, fp, n)
+        self.get_pos_1_box = [[0]] * n
+        self.get_pos_1_filt_box = [[0]] * n
+        self.get_pos_2_box = [[0]] * n
+        self.get_pos_2_filt_box = [[0]] * n
+        self.get_rot_1_box = [[0]] * n
+        self.get_rot_1_filt_box = [[0]] * n
+        self.get_rot_2_box = [[0]] * n
+        self.get_rot_2_filt_box = [[0]] * n
 
     def participant2robot(self, position: dict, rotation: dict, weight: list):
         # ----- numpy array to dict: position ----- #
@@ -110,9 +126,38 @@ class CAMotion:
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
 
-        self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
+        # ----- lowpass filter for leftpos ----- #
+        self.get_pos_1_box.append([sharedPosition_left])
+        get_pos_1_filt = self.filter_FB.lowpass2(self.get_pos_1_box, self.get_pos_1_filt_box)
+        self.get_pos_1_filt_box.append(get_pos_1_filt)
+        del self.get_pos_1_box[0]
+        del self.get_pos_1_filt_box[0]
+
+        # ----- lowpass filter for leftrot ----- #
+        self.get_rot_1_box.append([sharedRotation_euler_left])
+        get_rot_1_filt = self.filter_FB.lowpass2(self.get_rot_1_box, self.get_rot_1_filt_box)
+        self.get_rot_1_filt_box.append(get_rot_1_filt)
+        del self.get_rot_1_box[0]
+        del self.get_rot_1_filt_box[0]
+
+        # ----- lowpass filter for rightpos ----- #
+        self.get_pos_2_box.append([sharedPosition_right])
+        get_pos_2_filt = self.filter_FB.lowpass2(self.get_pos_2_box, self.get_pos_2_filt_box)
+        self.get_pos_2_filt_box.append(get_pos_2_filt)
+        del self.get_pos_2_box[0]
+        del self.get_pos_2_filt_box[0]
+
+        # ----- lowpass filter for rightrot ----- #
+        self.get_rot_2_box.append([sharedRotation_euler_right])
+        get_rot_2_filt = self.filter_FB.lowpass2(self.get_rot_2_box, self.get_rot_2_filt_box)
+        self.get_rot_2_filt_box.append(get_rot_2_filt)
+        del self.get_rot_2_box[0]
+        del self.get_rot_2_filt_box[0]
+
+        # self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
         # self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
-        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+        self.posarm = dict(robot1=get_pos_1_filt, robot2=get_pos_2_filt)
+        self.rotarm = dict(robot1=get_rot_1_filt, robot2=get_rot_2_filt)
 
         return self.posarm, self.rotarm
 
