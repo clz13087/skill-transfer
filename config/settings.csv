@@ -1,10 +1,10 @@
 xArmIPAddress_left,192.168.1.242
-initialpos_left,550,280,-60
-initialrot_left,-166,7,137
+initialpos_left,550,300,-60
+initialrot_left,-165,3,140
 
 xArmIPAddress_right,192.168.1.244
 initialpos_right,550,-280,-60
-initialrot_right,163,14,-137
+initialrot_right,163,15,-137
 
 motiveServerIPAddress,133.68.108.109
 motiveLocalIPAddress,133.68.108.109
@@ -26,8 +26,8 @@ bendingSensorCom4,COM17
 bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
-isExportData,False
-dirPath,C:/Users/SANOLAB/Desktop/tsugumi/skilltransfer/check_accuracy/16回目
+isExportData,True
+dirPath,C:/Users/SANOLAB/Desktop/tsugumi/skilltransfer/Fujiwara20240614/2回目
 
 participantNum,2
 gripperNum,0
