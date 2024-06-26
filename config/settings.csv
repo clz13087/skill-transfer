@@ -1,8 +1,8 @@
-xArmIPAddress_left,192.168.1.242
+xArmIPAddress_left,192.168.1.199
 initialpos_left,550,300,-60
 initialrot_left,-165,3,140
 
-xArmIPAddress_right,192.168.1.244
+xArmIPAddress_right,192.168.1.196
 initialpos_right,550,-280,-60
 initialrot_right,163,15,-137
 
