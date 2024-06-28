@@ -29,11 +29,11 @@ bendingSensorCom6,COM14
 isExportData,False
 dirPath,C:/Users/SANOLAB/Desktop/tsugumi/skilltransfer/Fujiwara20240614/2回目
 
-participantNum,3
+participantNum,2
 gripperNum,0
-otherRigidBodyNum,1
+otherRigidBodyNum,0
 robotNum,2
 
-weightListPos,0.5,0,0.5,0,0,0
-weightListRot,0.5,0,0.5,0,0,0
+weightListPos,0,1,0,0,0,0
+weightListRot,0,1,0,0,0,0
 weightGripperList,0,0,0,0,0,0
