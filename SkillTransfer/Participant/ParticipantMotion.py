@@ -55,11 +55,9 @@ class ParticipantMotion:
             self.bendingSensors = []
 
             if BendingSensor_ConnectionMethod == "wireless":
-                print("wireless")
                 self.ip = [bendingSensorUdpIpAddress, bendingSensorUdpIpAddress]
                 self.port = bendingSensorUdpPort
             elif BendingSensor_ConnectionMethod == "wired":
-                print("wired")
                 self.ip = bendingSensorSerialCOMs
                 self.port = bendingSensorUdpPort
 

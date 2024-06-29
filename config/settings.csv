@@ -1,16 +1,16 @@
 xArmIPAddress_left,192.168.1.199
-initialpos_left,550,300,-60
+initialpos_left,600,300,-60
 initialrot_left,-165,3,140
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,550,-280,-60
+initialpos_right,600,-350,-60
 initialrot_right,163,15,-137
 
 motiveServerIPAddress,133.68.108.51
 motiveLocalIPAddress,133.68.108.51
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
-frameRate,150
+frameRate,200
 
 bendingSensorPortParticipant1,9600
 bendingSensorPortParticipant2,9600

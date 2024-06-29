@@ -105,28 +105,16 @@ class ProcessorClass:
         self.condition = "1"
         self.number = "1"
 
-    def mainloop(self, isFixedFrameRate: bool = False, isChangeOSTimer: bool = False, isEnablexArm: bool = True):
+    def mainloop(self, isEnablexArm: bool = True):
         """
         Send the position and rotation to the xArm
         """
-
-        # ----- Change OS timer ----- #
-        if isFixedFrameRate and isChangeOSTimer:
-            windll.winmm.timeBeginPeriod(1)
 
         # ----- Process info ----- #
         self.loopCount = 0
         self.taskTime = []
         self.errorCount = 0
         taskStartTime = 0
-
-        # ----- Set loop time from frameRate ----- #
-        loopTime = 1 / self.frameRate
-        loopStartTime = 0
-        processDuration = 0
-        listFrameRate = []
-        if isFixedFrameRate:
-            print("Use fixed frame rate > " + str(self.frameRate) + "[fps]")
 
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum)
@@ -149,9 +137,6 @@ class ProcessorClass:
         try:
             while True:
                 if isMoving:
-                    # ---------- Start control process timer ---------- #
-                    loopStartTime = time.perf_counter()
-
                     # ----- Get transform data----- #
                     localPosition = participantMotion.LocalPosition(loopCount=self.loopCount)
                     localRotation = participantMotion.LocalRotation(loopCount=self.loopCount)
@@ -194,18 +179,10 @@ class ProcessorClass:
                         self.taskTime.append(time.perf_counter() - taskStartTime)
                         print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
 
-                    # ---------- End control process timer ---------- #
-                    processDuration = time.perf_counter() - loopStartTime
-
-                    # ----- Fixed frame rate ----- #
-                    if isFixedFrameRate:
-                        sleepTime = loopTime - processDuration
-                        if sleepTime < 0:
-                            pass
-                        else:
-                            time.sleep(sleepTime)
-
+                    # ---------- fix framerate ---------- #
+                    self.fix_framerate((time.perf_counter() - loop_start_time), 1/self.frameRate)
                     self.loopCount += 1
+                    loop_start_time = time.perf_counter()
 
                 else:
                     keycode = input('Input > "q": quit, "r": Clean error and init arm, "s": start control \n')
@@ -258,7 +235,7 @@ class ProcessorClass:
                             arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                         isMoving = True
-                        taskStartTime = time.perf_counter()
+                        taskStartTime = loop_start_time = time.perf_counter()
 
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt >> Stop: mainloop()")
@@ -324,7 +301,8 @@ class ProcessorClass:
         print("----- Process info -----")
         print("Total loop count > ", self.loopCount)
         for ttask in self.taskTime:
-            print("Task time\t > ", ttask, "[s]")
+            print("Task time\t > ", "{:.2f}".format(ttask), "[s]")
+            print("Frame Rate\t > ", "{:.2f}".format(self.loopCount/ttask), "[fps]")
         print("Error count\t > ", self.errorCount)
         print("------------------------")
 
@@ -367,3 +345,10 @@ class ProcessorClass:
 
         robotArm.set_mode(1)
         robotArm.set_state(state=0)
+
+    def fix_framerate(self, process_duration, looptime):
+        sleeptime = looptime - process_duration
+        if sleeptime < 0:
+            pass
+        else:
+            time.sleep(sleeptime)
