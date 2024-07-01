@@ -151,10 +151,10 @@ class DataRecordManager:
             npTimeRigidBodyTransform = np.c_[npDuration, npRigidBodyTransform]
             self.ExportAsCSV(npTimeRigidBodyTransform, dirPath, "OtherRigidBody_" + str(i + 1), participant, conditions, number, transformHeader)
 
-        print("Writing: Participant Gripper value...")
-        for i in tqdm.tqdm(range(self.bendingSensorNum), ncols=150):
-            npGripperValue_P = np.array(self.dictGripperValue_P["gripperValue_P" + str(i + 1)])
-            self.ExportAsCSV(npGripperValue_P, dirPath, "GripperValue_Participant_" + str(i + 1), participant, conditions, number, GripperHeader)
+        # print("Writing: Participant Gripper value...")
+        # for i in tqdm.tqdm(range(self.bendingSensorNum), ncols=150):
+        #     npGripperValue_P = np.array(self.dictGripperValue_P["gripperValue_P" + str(i + 1)])
+        #     self.ExportAsCSV(npGripperValue_P, dirPath, "GripperValue_Participant_" + str(i + 1), participant, conditions, number, GripperHeader)
 
         print("Writing: Robot transform...")
         for i in tqdm.tqdm(range(self.robotNum), ncols=150):
@@ -165,10 +165,10 @@ class DataRecordManager:
             npTimeRobotTransform = np.c_[npDuration, npRobotTransform]
             self.ExportAsCSV(npTimeRobotTransform, dirPath, "Transform_Robot_" + str(i + 1), participant, conditions, number, robotHeader)
 
-        print("Writing: Robot Gripper value...")
-        for i in tqdm.tqdm(range(self.robotNum), ncols=150):
-            npGripperValue_R = np.array( self.dictGripperValue_R["gripperValue_R" + str(i + 1)])
-            self.ExportAsCSV( npGripperValue_R, dirPath, "GripperValue_Robot_" + str(i + 1), participant, conditions, number, GripperHeader)
+        # print("Writing: Robot Gripper value...")
+        # for i in tqdm.tqdm(range(self.robotNum), ncols=150):
+        #     npGripperValue_R = np.array( self.dictGripperValue_R["gripperValue_R" + str(i + 1)])
+        #     self.ExportAsCSV( npGripperValue_R, dirPath, "GripperValue_Robot_" + str(i + 1), participant, conditions, number, GripperHeader)
 
         # print("Writing: Head value...")
         # npDuration = np.array(self.dictDurationTime)

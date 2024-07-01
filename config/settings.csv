@@ -3,8 +3,8 @@ initialpos_left,600,300,-60
 initialrot_left,-165,3,140
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,600,-350,-60
-initialrot_right,163,15,-137
+initialpos_right,450,-350,-134
+initialrot_right,141,-15,-126
 
 motiveServerIPAddress,133.68.108.51
 motiveLocalIPAddress,133.68.108.51
@@ -26,12 +26,12 @@ bendingSensorCom4,COM17
 bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
-isExportData,False
-dirPath,C:/Users/SANOLAB/Desktop/tsugumi/skilltransfer/Fujiwara20240614/2回目
+isExportData,True
+dirPath,C:\Users\hapticslab\Documents\tsugumi\RSJ2024\expertdata\4
 
 participantNum,2
 gripperNum,0
-otherRigidBodyNum,0
+otherRigidBodyNum,1
 robotNum,2
 
 weightListPos,0,1,0,0,0,0
