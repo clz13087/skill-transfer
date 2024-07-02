@@ -2,6 +2,7 @@ import datetime
 import pprint
 import threading
 import time
+import winsound
 from ctypes import windll
 from datetime import datetime
 from enum import Flag
@@ -207,6 +208,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         time.sleep(5)
+                        winsound.Beep(1000,500)
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
