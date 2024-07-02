@@ -1,9 +1,9 @@
 xArmIPAddress_left,192.168.1.199
-initialpos_left,600,300,-60
-initialrot_left,-165,3,140
+initialpos_left,206,0,120
+initialrot_left,180,0,0
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,450,-350,-134
+initialpos_right,450,-350,-120
 initialrot_right,141,-15,-126
 
 motiveServerIPAddress,133.68.108.51
@@ -27,9 +27,9 @@ bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
 isExportData,True
-dirPath,C:\Users\hapticslab\Documents\tsugumi\RSJ2024\expertdata\4
+dirPath,C:\Users\hapticslab\Documents\tsugumi\RSJ2024\beginnerdata\name\before\1
 
-participantNum,2
+participantNum,4
 gripperNum,0
 otherRigidBodyNum,1
 robotNum,2

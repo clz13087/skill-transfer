@@ -208,7 +208,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         time.sleep(5)
-                        winsound.Beep(1000,500)
+                        winsound.Beep(1000,1000)
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
