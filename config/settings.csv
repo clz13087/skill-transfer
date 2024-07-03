@@ -26,8 +26,8 @@ bendingSensorCom4,COM17
 bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
-isExportData,True
-dirPath,C:\Users\hapticslab\Documents\tsugumi\RSJ2024\beginnerdata\name\before\1
+isExportData,False
+dirPath,C:\Users\hapticslab\Documents\tsugumi\RSJ2024\beginnerdata\name\after\4
 
 participantNum,4
 gripperNum,0
