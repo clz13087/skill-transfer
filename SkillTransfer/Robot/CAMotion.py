@@ -184,6 +184,26 @@ class CAMotion:
 
         return rotation_angle_degrees
 
+    def calculate_local_rotation_angle_z_common(self, participant, other):
+        """ Calculate the local rotation angle between two rotation matrices with a common local z-axis """
+        participant_matrix = self.quaternion_to_rotation_matrix(participant)
+        other_matrix = self.quaternion_to_rotation_matrix(other)
+
+        # Extract the x and y axes (first two columns) from the rotation matrices
+        x1, y1 = participant_matrix[:, 0], participant_matrix[:, 1]
+        x2, y2 = other_matrix[:, 0], other_matrix[:, 1]
+        
+        # Calculate the angle between the x-axes
+        cos_angle_x = np.dot(x1, x2) / (np.linalg.norm(x1) * np.linalg.norm(x2))
+        angle_rad_x = np.arccos(np.clip(cos_angle_x, -1.0, 1.0))  # Clip to avoid numerical errors
+
+        # Convert radians to degrees
+        angle_deg_x = np.degrees(angle_rad_x)
+
+        # The angle between the y-axes should be the same due to the common z-axis
+        return angle_deg_x
+        
+
     # ----------------------------------------------------------------------------------------------------------------------------------------------
 
     def SetOriginPosition(self, position) -> None:

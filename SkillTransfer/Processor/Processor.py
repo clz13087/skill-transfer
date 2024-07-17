@@ -147,17 +147,7 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
-
-                    if rotate_flag:
-                        # UnboundLocalError: cannot access local variable 'initial_marker_rotation' where it is not associated with a value
-                        initial_marker_rotation = relativeRotation['otherRigidBody1']
-                        rotate_flag = False
-
-                    else:
-                        pass
-                    
-                    current_marker_rotation = relativeRotation["otherRigidBody1"]
-                    rotate_angle = caMotion.calculate_rotation_angle(initial_marker_rotation, current_marker_rotation)
+                    rotate_angle = caMotion.calculate_local_rotation_angle_z_common(relativeRotation['participant1'], relativeRotation['otherRigidBody1'])
                     print(rotate_angle)
 
                     if isEnablexArm:
