@@ -607,7 +607,7 @@ class CAMotion:
 
         return dictionary
 
-    def quaternion_to_rotation_matrix(quaternion):
+    def quaternion_to_rotation_matrix(self, quaternion):
         """
         クォータニオンを回転行列に変換する関数
         """

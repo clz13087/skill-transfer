@@ -34,6 +34,6 @@ gripperNum,0
 otherRigidBodyNum,1
 robotNum,2
 
-weightListPos,0,1,0,0,0,0
-weightListRot,0,1,0,0,0,0
+weightListPos,0,0,0,0,0,0
+weightListRot,0,0,0,0,0,0
 weightGripperList,0,0,0,0,0,0

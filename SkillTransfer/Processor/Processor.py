@@ -116,6 +116,7 @@ class ProcessorClass:
         self.taskTime = []
         self.errorCount = 0
         taskStartTime = 0
+        rotate_flag = True
 
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum)
@@ -147,19 +148,23 @@ class ProcessorClass:
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
-                    global initial_marker_rotation
-                    if initial_marker_rotation is None:
+                    if rotate_flag:
                         # UnboundLocalError: cannot access local variable 'initial_marker_rotation' where it is not associated with a value
                         initial_marker_rotation = relativeRotation['otherRigidBody1']
+                        rotate_flag = False
+
+                    else:
+                        pass
                     
                     current_marker_rotation = relativeRotation["otherRigidBody1"]
                     rotate_angle = caMotion.calculate_rotation_angle(initial_marker_rotation, current_marker_rotation)
+                    print(rotate_angle)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-                        arm_1.set_servo_angle(servo_id=7, angle=rotate_angle)
+                        arm_2.set_servo_angle(servo_id=7, angle=rotate_angle, is_radian=False)
 
                     # ----- Bending sensor ----- #
                     # if self.gripperNum != 0:
@@ -217,7 +222,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         time.sleep(5)
-                        winsound.Beep(1000,1000)
+                        # winsound.Beep(1000,1000)
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
