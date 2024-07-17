@@ -160,6 +160,30 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
+    def calculate_rotation_angle(self, initial_marker_rotation, current_marker_rotation):
+        """
+        鉗子ベクトル軸周りの回転角度を計算する関数
+        """
+        # クォータニオンを回転行列に変換
+        initial_rotation_matrix = self.quaternion_to_rotation_matrix(initial_marker_rotation)
+        current_rotation_matrix = self.quaternion_to_rotation_matrix(current_marker_rotation)
+
+        # 鉗子のローカル座標系でのz軸方向を表すベクトル
+        instrument_vector = np.array([0, 0, 1])
+
+        # 初期と現在の回転行列でベクトルを変換
+        initial_direction = np.dot(initial_rotation_matrix, instrument_vector)
+        current_direction = np.dot(current_rotation_matrix, instrument_vector)
+
+        # 初期と現在のベクトルの間の角度を計算
+        dot_product = np.dot(initial_direction, current_direction)
+        angle = np.arccos(np.clip(dot_product / (np.linalg.norm(initial_direction) * np.linalg.norm(current_direction)), -1.0, 1.0))
+
+        # ラジアンを度に変換
+        rotation_angle_degrees = math.degrees(angle)
+
+        return rotation_angle_degrees
+
     # ----------------------------------------------------------------------------------------------------------------------------------------------
 
     def SetOriginPosition(self, position) -> None:
@@ -582,3 +606,15 @@ class CAMotion:
             return
 
         return dictionary
+
+    def quaternion_to_rotation_matrix(quaternion):
+        """
+        クォータニオンを回転行列に変換する関数
+        """
+        x, y, z, w = quaternion
+        rotation_matrix = np.array([
+            [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
+            [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
+            [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]
+        ])
+        return rotation_matrix

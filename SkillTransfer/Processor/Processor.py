@@ -147,10 +147,17 @@ class ProcessorClass:
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
+                    if initial_marker_rotation is None:
+                        initial_marker_rotation = relativeRotation['otherRigidBody1']
+                    
+                    current_marker_rotation = relativeRotation["otherRigidBody1"]
+                    rotate_angle = caMotion.calculate_rotation_angle(initial_marker_rotation, current_marker_rotation)
+
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        arm_1.set_servo_angle(servo_id=7, angle=rotate_angle)
 
                     # ----- Bending sensor ----- #
                     # if self.gripperNum != 0:
@@ -225,17 +232,7 @@ class ProcessorClass:
 
                         caMotion.SetOriginPosition(participantMotion.LocalPosition())
                         caMotion.SetInversedMatrix(participantMotion.LocalRotation())
-                        participantMotion.SetInitialBendingValue()
-
-                        relativePosition = caMotion.GetRelativePosition(position=participantMotion.LocalPosition())
-                        relativeRotation = caMotion.GetRelativeRotation(rotation=participantMotion.LocalRotation())
-
-                        robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
-
-                        if isEnablexArm:
-                            # ----- Send to xArm ----- #
-                            arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                            arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        # participantMotion.SetInitialBendingValue()
 
                         isMoving = True
                         taskStartTime = loop_start_time = time.perf_counter()
