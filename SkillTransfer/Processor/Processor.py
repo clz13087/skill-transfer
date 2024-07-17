@@ -148,6 +148,7 @@ class ProcessorClass:
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
                     if initial_marker_rotation is None:
+                        # UnboundLocalError: cannot access local variable 'initial_marker_rotation' where it is not associated with a value
                         initial_marker_rotation = relativeRotation['otherRigidBody1']
                     
                     current_marker_rotation = relativeRotation["otherRigidBody1"]
