@@ -147,7 +147,7 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
-                    rotate_angle = caMotion.calculate_local_rotation_angle_z_common(relativeRotation['participant1'], relativeRotation['otherRigidBody1'])
+                    rotate_angle = caMotion.quaternion_angle_deg(relativeRotation['participant1'], relativeRotation['otherRigidBody1'])
                     print(rotate_angle)
 
                     if isEnablexArm:

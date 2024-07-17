@@ -202,6 +202,27 @@ class CAMotion:
 
         # The angle between the y-axes should be the same due to the common z-axis
         return angle_deg_x
+
+    def quaternion_angle_deg(self, quat1, quat2):
+        """ Calculate the angle in degrees between two quaternions """
+        # Normalize the quaternions
+        quat1 = quat1 / np.linalg.norm(quat1)
+        quat2 = quat2 / np.linalg.norm(quat2)
+        
+        # Calculate the dot product
+        dot_product = np.dot(quat1, quat2)
+        
+        # Ensure the dot product is within the valid range [-1, 1]
+        dot_product = np.clip(dot_product, -1.0, 1.0)
+        
+        # Calculate the angle in radians
+        angle_rad = 2 * np.arccos(dot_product)
+        
+        # Convert radians to degrees
+        angle_deg = np.degrees(angle_rad)
+        
+        return angle_deg
+
         
 
     # ----------------------------------------------------------------------------------------------------------------------------------------------
