@@ -154,7 +154,7 @@ class ProcessorClass:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-                        arm_2.set_servo_angle(servo_id=7, angle=rotate_angle, is_radian=False)
+                        # arm_2.set_servo_angle(servo_id=7, angle=rotate_angle, is_radian=False)
 
                     # ----- Bending sensor ----- #
                     # if self.gripperNum != 0:
@@ -212,7 +212,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         time.sleep(5)
-                        # winsound.Beep(1000,1000)
+                        winsound.Beep(1000,1000)
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
