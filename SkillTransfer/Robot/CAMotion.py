@@ -4,6 +4,7 @@ import numpy as np
 import quaternion
 import scipy.spatial.transform as scitransform
 from Filter.Filter import MotionFilter
+from scipy.spatial.transform import Rotation as R
 
 """
 ##### IMPORTANT #####
@@ -237,6 +238,35 @@ class CAMotion:
         
         # Calculate the angle in radians
         angle_rad = 2 * np.arccos(dot_product)
+        
+        # Convert radians to degrees
+        angle_deg = np.degrees(angle_rad)
+        
+        return angle_deg
+
+    def quaternion_difference_angle_deg(quat1, quat2):
+        """
+        Calculate the rotation angle difference in degrees between two quaternions.
+        
+        Parameters:
+        quat1, quat2 (list or np.array): Two 4-dimensional vectors representing the quaternions.
+        
+        Returns:
+        float: The rotation angle difference in degrees.
+        """
+        # Normalize the quaternions
+        quat1 = quat1 / np.linalg.norm(quat1)
+        quat2 = quat2 / np.linalg.norm(quat2)
+        
+        # Convert quaternions to scipy Rotation objects
+        rot1 = R.from_quat(quat1)
+        rot2 = R.from_quat(quat2)
+        
+        # Calculate the relative rotation
+        relative_rotation = rot2 * rot1.inv()
+        
+        # Extract the rotation angle in radians
+        angle_rad = relative_rotation.magnitude()
         
         # Convert radians to degrees
         angle_deg = np.degrees(angle_rad)
