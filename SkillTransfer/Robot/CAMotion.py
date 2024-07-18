@@ -223,6 +223,25 @@ class CAMotion:
         
         return angle_deg
 
+    def quaternion_angle_deg_same_axis(quat1, quat2):
+        """ Calculate the angle in degrees between two quaternions with the same axis (x, y, z) """
+        # Extract the w components
+        w1 = quat1[3]
+        w2 = quat2[3]
+        
+        # Calculate the difference in the w components
+        dot_product = w1 * w2
+        
+        # Ensure the dot product is within the valid range [-1, 1]
+        dot_product = np.clip(dot_product, -1.0, 1.0)
+        
+        # Calculate the angle in radians
+        angle_rad = 2 * np.arccos(dot_product)
+        
+        # Convert radians to degrees
+        angle_deg = np.degrees(angle_rad)
+        
+        return angle_deg
         
 
     # ----------------------------------------------------------------------------------------------------------------------------------------------
