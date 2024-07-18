@@ -230,7 +230,7 @@ class CAMotion:
         w2 = quat2[3]
         
         # Calculate the difference in the w components
-        dot_product = w1 * w2
+        dot_product = w1 - w2
         
         # Ensure the dot product is within the valid range [-1, 1]
         dot_product = np.clip(dot_product, -1.0, 1.0)
