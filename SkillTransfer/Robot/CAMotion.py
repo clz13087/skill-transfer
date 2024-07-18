@@ -263,7 +263,7 @@ class CAMotion:
         rot2 = R.from_quat(quat2)
         
         # Calculate the relative rotation
-        relative_rotation = rot2 * rot1.inv()
+        relative_rotation = rot2.inv() * rot1
         
         # Extract the rotation angle in radians
         angle_rad = relative_rotation.magnitude()
