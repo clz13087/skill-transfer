@@ -223,7 +223,7 @@ class CAMotion:
         
         return angle_deg
 
-    def quaternion_angle_deg_same_axis(quat1, quat2):
+    def quaternion_angle_deg_same_axis(self, quat1, quat2):
         """ Calculate the angle in degrees between two quaternions with the same axis (x, y, z) """
         # Extract the w components
         w1 = quat1[3]
