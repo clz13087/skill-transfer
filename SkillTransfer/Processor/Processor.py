@@ -147,14 +147,14 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
-                    rotate_angle = caMotion.quaternion_difference_angle_deg(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
+                    rotate_angle = caMotion.quaternion_difference_angle_deg_minus(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
                     print(rotate_angle)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         # arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-                        code_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False)
+                        # code_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False)
                         # code_1 = arm_1.set_servo_angle(servo_id=7, angle=90, is_radian=False,wait=True)
 
                     # ----- Bending sensor ----- #
@@ -214,7 +214,7 @@ class ProcessorClass:
                     elif keycode == "s":
                         time.sleep(2)
                         # winsound.Beep(1000,1000)
-                        code_2, ret_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False, wait=True)
+                        # code_2, ret_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False, wait=True)
                         print("here!!!!!!!!!!!!!!!")
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
