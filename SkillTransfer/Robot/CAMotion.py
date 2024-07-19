@@ -161,30 +161,6 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
-    def calculate_rotation_angle(self, initial_marker_rotation, current_marker_rotation):
-        """
-        鉗子ベクトル軸周りの回転角度を計算する関数
-        """
-        # クォータニオンを回転行列に変換
-        initial_rotation_matrix = self.quaternion_to_rotation_matrix(initial_marker_rotation)
-        current_rotation_matrix = self.quaternion_to_rotation_matrix(current_marker_rotation)
-
-        # 鉗子のローカル座標系でのz軸方向を表すベクトル
-        instrument_vector = np.array([0, 0, 1])
-
-        # 初期と現在の回転行列でベクトルを変換
-        initial_direction = np.dot(initial_rotation_matrix, instrument_vector)
-        current_direction = np.dot(current_rotation_matrix, instrument_vector)
-
-        # 初期と現在のベクトルの間の角度を計算
-        dot_product = np.dot(initial_direction, current_direction)
-        angle = np.arccos(np.clip(dot_product / (np.linalg.norm(initial_direction) * np.linalg.norm(current_direction)), -1.0, 1.0))
-
-        # ラジアンを度に変換
-        rotation_angle_degrees = math.degrees(angle)
-
-        return rotation_angle_degrees
-
     def calculate_local_rotation_angle_z_common(self, participant, other):
         """ Calculate the local rotation angle between two rotation matrices with a common local z-axis """
         participant_matrix = self.quaternion_to_rotation_matrix(participant)
@@ -243,37 +219,8 @@ class CAMotion:
         angle_deg = np.degrees(angle_rad)
         
         return angle_deg
-
-    def quaternion_difference_angle_deg(self, quat1, quat2):
-        """
-        Calculate the rotation angle difference in degrees between two quaternions.
-        
-        Parameters:
-        quat1, quat2 (list or np.array): Two 4-dimensional vectors representing the quaternions.
-        
-        Returns:
-        float: The rotation angle difference in degrees.
-        """
-        # Normalize the quaternions
-        quat1 = quat1 / np.linalg.norm(quat1)
-        quat2 = quat2 / np.linalg.norm(quat2)
-        
-        # Convert quaternions to scipy Rotation objects
-        rot1 = R.from_quat(quat1)
-        rot2 = R.from_quat(quat2)
-        
-        # Calculate the relative rotation
-        relative_rotation = rot2.inv() * rot1
-        
-        # Extract the rotation angle in radians
-        angle_rad = relative_rotation.magnitude()
-        
-        # Convert radians to degrees
-        angle_deg = np.degrees(angle_rad)
-        
-        return angle_deg
     
-    def quaternion_difference_angle_deg_minus(self, quat1, quat2):
+    def calculate_rotate_angle(self, quat1, quat2):
         """
         Calculate the rotation angle difference in degrees between two quaternions, including direction (sign),
         assuming rotation around the local z-axis.
