@@ -244,7 +244,7 @@ class CAMotion:
         
         return angle_deg
 
-    def quaternion_difference_angle_deg(quat1, quat2):
+    def quaternion_difference_angle_deg(self, quat1, quat2):
         """
         Calculate the rotation angle difference in degrees between two quaternions.
         

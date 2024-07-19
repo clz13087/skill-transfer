@@ -3,7 +3,7 @@ initialpos_left,206,0,120
 initialrot_left,180,0,0
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,450,-350,-120
+initialpos_right,500,-350,-120
 initialrot_right,141,-15,-126
 
 motiveServerIPAddress,133.68.108.51
@@ -34,6 +34,6 @@ gripperNum,0
 otherRigidBodyNum,1
 robotNum,2
 
-weightListPos,0,0,0,0,0,0
+weightListPos,0,1,0,0,0,0
 weightListRot,0,0,0,0,0,0
 weightGripperList,0,0,0,0,0,0

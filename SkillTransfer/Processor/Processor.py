@@ -147,15 +147,15 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
-                    rotate_angle = caMotion.quaternion_difference_angle_deg(relativeRotation['participant1'], relativeRotation['otherRigidBody1'])
-                    print(relativeRotation["participant1"] - relativeRotation["otherRigidBody1"])
+                    rotate_angle = caMotion.quaternion_difference_angle_deg(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
                     print(rotate_angle)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
-                        arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                        # arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-                        # arm_2.set_servo_angle(servo_id=7, angle=rotate_angle, is_radian=False)
+                        # code_2 = arm_2.set_servo_angle(servo_id=1, angle=50, is_radian=False)
+                        # code_1 = arm_1.set_servo_angle(servo_id=7, angle=90, is_radian=False,wait=True)
 
                     # ----- Bending sensor ----- #
                     # if self.gripperNum != 0:
