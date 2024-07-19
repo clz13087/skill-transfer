@@ -153,8 +153,8 @@ class ProcessorClass:
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         # arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-                        # code_2 = arm_2.set_servo_angle(servo_id=1, angle=50, is_radian=False)
+                        # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        code_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False)
                         # code_1 = arm_1.set_servo_angle(servo_id=7, angle=90, is_radian=False,wait=True)
 
                     # ----- Bending sensor ----- #
@@ -173,17 +173,17 @@ class ProcessorClass:
                         dataRecordManager.Record(position=relativePosition, rotation=relativeRotation, weight=weightList, robotpos=robotpos, robotrot=robotrot, duration=time.perf_counter() - taskStartTime)
 
                     # ----- If xArm error has occured ----- #
-                    if isEnablexArm and arm_1.has_err_warn:
-                        isMoving = False
-                        self.errorCount += 1
-                        self.taskTime.append(time.perf_counter() - taskStartTime)
-                        print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
+                    # if isEnablexArm and arm_1.has_err_warn:
+                    #     isMoving = False
+                    #     self.errorCount += 1
+                    #     self.taskTime.append(time.perf_counter() - taskStartTime)
+                    #     print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
 
-                    if isEnablexArm and arm_2.has_err_warn:
-                        isMoving = False
-                        self.errorCount += 1
-                        self.taskTime.append(time.perf_counter() - taskStartTime)
-                        print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
+                    # if isEnablexArm and arm_2.has_err_warn:
+                    #     isMoving = False
+                    #     self.errorCount += 1
+                    #     self.taskTime.append(time.perf_counter() - taskStartTime)
+                    #     print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
 
                     # ---------- fix framerate ---------- #
                     self.fix_framerate((time.perf_counter() - loop_start_time), 1/self.frameRate)
@@ -213,7 +213,9 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         time.sleep(2)
-                        winsound.Beep(1000,1000)
+                        # winsound.Beep(1000,1000)
+                        code_2, ret_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False, wait=True)
+                        print("here!!!!!!!!!!!!!!!")
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
