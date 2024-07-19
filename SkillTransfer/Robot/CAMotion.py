@@ -272,7 +272,41 @@ class CAMotion:
         angle_deg = np.degrees(angle_rad)
         
         return angle_deg
+    
+    def quaternion_difference_angle_deg_minus(self, quat1, quat2):
+        """
+        Calculate the rotation angle difference in degrees between two quaternions, including direction (sign),
+        assuming rotation around the local z-axis.
         
+        Parameters:
+        quat1, quat2 (list or np.array): Two 4-dimensional vectors representing the quaternions.
+        
+        Returns:
+        float: The rotation angle difference in degrees, with sign indicating direction.
+        """
+        # Normalize the quaternions
+        quat1 = quat1 / np.linalg.norm(quat1)
+        quat2 = quat2 / np.linalg.norm(quat2)
+        
+        # Convert quaternions to scipy Rotation objects
+        rot1 = R.from_quat(quat1)
+        rot2 = R.from_quat(quat2)
+        
+        # Calculate the relative rotation
+        relative_rotation = rot2 * rot1.inv()
+        
+        # Extract the rotation angle in radians
+        angle_rad = 2 * np.arccos(np.clip(relative_rotation.as_quat()[-1], -1.0, 1.0))
+        
+        # Get the rotation vector
+        rotvec = relative_rotation.as_rotvec()
+        
+        # Determine the sign of the rotation angle based on the z-component of the rotation vector
+        angle_deg = np.degrees(angle_rad)
+        if rotvec[2] < 0:  # Assuming rotation around the local z-axis
+            angle_deg = -angle_deg
+        
+        return angle_deg        
 
     # ----------------------------------------------------------------------------------------------------------------------------------------------
 
