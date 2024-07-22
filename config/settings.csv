@@ -3,14 +3,14 @@ initialpos_left,206,0,120
 initialrot_left,180,0,0
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,424,-55,91
-initialrot_right,-155,49,173
+initialpos_right,780,84,68
+initialrot_right,90,90,90
 
 motiveServerIPAddress,192.168.1.102
 motiveLocalIPAddress,192.168.1.102
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
-frameRate,200
+frameRate,250
 
 bendingSensorPortParticipant1,9600
 bendingSensorPortParticipant2,9600
