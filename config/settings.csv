@@ -6,8 +6,8 @@ xArmIPAddress_right,192.168.1.196
 initialpos_right,500,-350,-120
 initialrot_right,141,-15,-126
 
-motiveServerIPAddress,133.68.108.51
-motiveLocalIPAddress,133.68.108.51
+motiveServerIPAddress,192.168.1.102
+motiveLocalIPAddress,192.168.1.102
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
 frameRate,200
@@ -34,6 +34,6 @@ gripperNum,0
 otherRigidBodyNum,1
 robotNum,2
 
-weightListPos,0,0,0,0,0,0
+weightListPos,0,1,0,0,0,0
 weightListRot,0,0,0,0,0,0
 weightGripperList,0,0,0,0,0,0
