@@ -149,6 +149,7 @@ class ProcessorClass:
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
                     rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
+                    print(rotate_angle)
                     robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
                     # print(rotate_angle)
 
@@ -372,7 +373,7 @@ class ProcessorClass:
         r_rotation = R.from_euler('z', angle_deg, degrees=True)
         
         # クォータニオンの回転を適用
-        r_result =  r_rotation * r_original
+        r_result =  r_original * r_rotation
         
         # 結果をオイラー角に変換して返す
         return r_result.as_euler('xyz', degrees=True)
