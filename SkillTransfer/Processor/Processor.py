@@ -372,7 +372,7 @@ class ProcessorClass:
         r_rotation = R.from_euler('z', angle_deg, degrees=True)
         
         # クォータニオンの回転を適用
-        r_result = r_original * r_rotation
+        r_result =  r_rotation * r_original
         
         # 結果をオイラー角に変換して返す
         return r_result.as_euler('xyz', degrees=True)
