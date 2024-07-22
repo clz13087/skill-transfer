@@ -7,6 +7,7 @@ from ctypes import windll
 from datetime import datetime
 from enum import Flag
 from turtle import right
+from scipy.spatial.transform import Rotation as R
 
 import numpy as np
 from FileIO.FileIO import FileIO
@@ -148,6 +149,7 @@ class ProcessorClass:
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
                     rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
+                    robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
                     # print(rotate_angle)
 
                     if isEnablexArm:
@@ -157,10 +159,10 @@ class ProcessorClass:
                         # code_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False)
                         # code_2 = arm_2.set_servo_angle(servo_id=7, angle=100+rotate_angle, is_radian=False, wait=True)
 
-                        arm_2_angles = arm_2.angles
-                        arm_2_angles[6] += rotate_angle
-                        print(arm_2_angles)
-                        code_2 = arm_2.set_servo_angle_j(angles=arm_2_angles, is_radian=False)
+                        # arm_2_angles = arm_2.angles
+                        # arm_2_angles[6] += rotate_angle
+                        # print(arm_2_angles)
+                        # code_2 = arm_2.set_servo_angle_j(angles=arm_2_angles, is_radian=False)
 
 
                         # print(arm_2.angles)
@@ -360,3 +362,17 @@ class ProcessorClass:
             pass
         else:
             time.sleep(sleeptime)
+
+
+    def add_rotation(self, original_euler, angle_deg):
+        # オイラー角をクォータニオンに変換
+        r_original = R.from_euler('xyz', original_euler, degrees=True)
+        
+        # 回転角度をクォータニオンに変換（z軸の回転として指定）
+        r_rotation = R.from_euler('z', angle_deg, degrees=True)
+        
+        # クォータニオンの回転を適用
+        r_result = r_original * r_rotation
+        
+        # 結果をオイラー角に変換して返す
+        return r_result.as_euler('xyz', degrees=True)
