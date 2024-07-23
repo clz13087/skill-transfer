@@ -67,6 +67,10 @@ class CAMotion:
         self.get_rot_2_filt_box = [[0]] * n
 
     def participant2robot(self, position: dict, rotation: dict, weight: list):
+        new_order = [2, 0, 1, 3]
+        for key in rotation.keys():
+            rotation[key] = [rotation[key][i] for i in new_order]
+
         # ----- numpy array to dict: position ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
