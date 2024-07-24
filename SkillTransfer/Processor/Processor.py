@@ -149,8 +149,8 @@ class ProcessorClass:
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
                     rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
-                    print(rotate_angle)
-                    robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
+                    # print(rotate_angle)
+                    # robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
                     # print(rotate_angle)
 
                     if isEnablexArm:
@@ -363,7 +363,6 @@ class ProcessorClass:
             pass
         else:
             time.sleep(sleeptime)
-
 
     def add_rotation(self, original_euler, angle_deg):
         # オイラー角をクォータニオンに変換
