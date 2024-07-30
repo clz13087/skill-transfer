@@ -3,8 +3,8 @@ initialpos_left,206,0,120
 initialrot_left,180,0,0
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,646,-269,-79
-initialrot_right,-152,61,170
+initialpos_right,567,0,450
+initialrot_right,90,0,45
 
 motiveServerIPAddress,192.168.1.102
 motiveLocalIPAddress,192.168.1.102

@@ -146,11 +146,12 @@ class ProcessorClass:
 
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
+                    # print(caMotion.Quaternion2Euler(relativeRotation['participant2']))
 
                     robotpos, robotrot = caMotion.participant2robot_new(relativePosition, relativeRotation, weightList)
-                    # rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
-                    # print(rotate_angle)
-                    # robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
+                    rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
+                    print(rotate_angle)
+                    robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
                     # print(rotate_angle)
 
                     if isEnablexArm:
@@ -369,7 +370,7 @@ class ProcessorClass:
         r_original = R.from_euler('xyz', original_euler, degrees=True)
         
         # 回転角度をクォータニオンに変換（z軸の回転として指定）
-        r_rotation = R.from_euler('z', angle_deg, degrees=True)
+        r_rotation = R.from_euler('y', angle_deg, degrees=True)
         
         # クォータニオンの回転を適用
         r_result =  r_original * r_rotation
