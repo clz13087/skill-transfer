@@ -27,11 +27,11 @@ bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
 isExportData,False
-dirPath,C:\Users\hapticslab\Documents\tsugumi\RSJ2024\beginnerdata\name\after\4
+dirPath,C:\Users\hapticslab\Documents\tsugumi\check_accuracy\3
 
 participantNum,2
 gripperNum,0
-otherRigidBodyNum,1
+otherRigidBodyNum,2
 robotNum,2
 
 weightListPos,0,1,0,0,0,0
