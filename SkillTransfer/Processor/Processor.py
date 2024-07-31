@@ -149,10 +149,9 @@ class ProcessorClass:
                     # print(caMotion.Quaternion2Euler(relativeRotation['participant2']))
 
                     robotpos, robotrot = caMotion.participant2robot_new(relativePosition, relativeRotation, weightList)
-                    # rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
-                    # print(rotate_angle)
+                    rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
+                    print(rotate_angle)
                     # robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
-                    # print(rotate_angle)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #

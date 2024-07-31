@@ -51,11 +51,10 @@ class xArmTransform:
 
         if self.mount == "left":
             x, y, z = relativepos_mm[2] + self.__initX, -1 * relativepos_mm[1] + self.__initY, relativepos_mm[0] + self.__initZ
-            roll, pitch, yaw = relativerot[2] + self.__initRoll, -1 * relativerot[1] + self.__initPitch, relativerot[0] + self.__initYaw
+            roll, pitch, yaw = relativerot[0] + self.__initRoll, -relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw
 
         elif self.mount == "right":
             x, y, z = relativepos_mm[2] + self.__initX, relativepos_mm[1] + self.__initY, -1 * relativepos_mm[0] + self.__initZ
-            print(relativerot)
             roll, pitch, yaw = relativerot[0] + self.__initRoll, relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw
 
         elif self.mount == "flat":

@@ -132,35 +132,17 @@ class CAMotion:
         return self.posarm, self.rotarm
 
     def participant2robot_new(self, position: dict, rotation: dict, weight: list):
-        # for i in range(self.participantNum):
-        #     if i % 2 == 0:
-        #         left_order = [2, 1, 0, 3]
-        #         for key in rotation.keys():
-        #             rotation[key] = [rotation[key][j] for j in left_order]
-        #             rotation[key][1] = -1 * rotation[key][1]
-
-        #     elif i % 2 == 1:
-        #         right_order = [2, 1, 0, 3]
-        #         for key in rotation.keys():
-        #             rotation[key] = [rotation[key][j] for j in right_order]
-        #             rotation[key][2] = -1 * rotation[key][2]
-        
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())
 
+        # ----- change cordinate from motive to xArm (only rotation) ----- #
         for i in range(self.participantNum):
-            # 対象となるキーを取得
             key = keys_list[i]
-
-            # 指定したキーの並び替え
             rotation[key] = [rotation[key][j] for j in order]
 
             if i % 2 == 0:
-                # iが偶数のとき、1番目の要素の符号を入れ替え
                 rotation[key][1] = -1 * rotation[key][1]
-
             elif i % 2 == 1:
-                # iが奇数のとき、2番目の要素の符号を入れ替え
                 rotation[key][2] = -1 * rotation[key][2]
 
 
@@ -317,7 +299,7 @@ class CAMotion:
         
         # Determine the sign of the rotation angle based on the z-component of the rotation vector
         angle_deg = np.degrees(angle_rad)
-        if rotvec[2] < 0:  # Assuming rotation around the local z-axis
+        if rotvec[2] > 0:  # Assuming rotation around the local z-axis
             angle_deg = -angle_deg
         
         return angle_deg        
