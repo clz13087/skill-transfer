@@ -3,8 +3,8 @@ initialpos_left,206,0,120
 initialrot_left,180,0,0
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,567,0,450
-initialrot_right,90,0,45
+initialpos_right,543,0,190
+initialrot_right,90,0,0
 
 motiveServerIPAddress,192.168.1.102
 motiveLocalIPAddress,192.168.1.102
@@ -29,11 +29,11 @@ bendingSensorCom6,COM14
 isExportData,False
 dirPath,C:\Users\hapticslab\Documents\tsugumi\check_accuracy\3
 
-participantNum,2
+participantNum,4
 gripperNum,0
-otherRigidBodyNum,2
+otherRigidBodyNum,0
 robotNum,2
 
-weightListPos,0,1,0,0,0,0
-weightListRot,0,1,0,0,0,0
+weightListPos,0,0.5,0,0.5,0,0
+weightListRot,0,0.5,0,0.5,0,0
 weightGripperList,0,0,0,0,0,0

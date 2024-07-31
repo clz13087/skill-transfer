@@ -67,10 +67,6 @@ class CAMotion:
         self.get_rot_2_filt_box = [[0]] * n
 
     def participant2robot(self, position: dict, rotation: dict, weight: list):
-        new_order = [2, 0, 1, 3]
-        for key in rotation.keys():
-            rotation[key] = [rotation[key][i] for i in new_order]
-
         # ----- numpy array to dict: position ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
@@ -136,18 +132,19 @@ class CAMotion:
         return self.posarm, self.rotarm
 
     def participant2robot_new(self, position: dict, rotation: dict, weight: list):
-        for i in range(self.participantNum):
-            if i % 2 == 0:
-                left_order = [2, 1, 0, 3]
-                for key in rotation.keys():
-                    rotation[key] = [rotation[key][j] for j in left_order]
-                    rotation[key][1] = -1 * rotation[key][1]
+        # for i in range(self.participantNum):
+        #     if i % 2 == 0:
+        right_order = [2, 1, 0, 3]
+        for key in rotation.keys():
+            rotation[key] = [rotation[key][j] for j in right_order]
+            rotation[key][2] = -1 * rotation[key][2]
 
-            elif i % 2 == 0:
-                right_order = [2, 1, 0, 3]
-                for key in rotation.keys():
-                    rotation[key] = [rotation[key][j] for j in right_order]
-                    rotation[key][2] = -1 * rotation[key][2]
+            # if i % 2 == 0:
+            #     print(i)
+            #     left_order = [2, 1, 0, 3]
+            #     for key in rotation.keys():
+            #         rotation[key] = [rotation[key][j] for j in left_order]
+            #         rotation[key][1] = -1 * rotation[key][1]
 
         # ----- numpy array to dict: position ----- #
         if type(position) is np.ndarray:
