@@ -302,7 +302,7 @@ class CAMotion:
         if rotvec[2] > 0:  # Assuming rotation around the local z-axis
             angle_deg = -angle_deg
         
-        return angle_deg        
+        return angle_deg
 
     # ----------------------------------------------------------------------------------------------------------------------------------------------
 
