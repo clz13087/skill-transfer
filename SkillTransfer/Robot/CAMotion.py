@@ -211,10 +211,9 @@ class CAMotion:
         return self.posarm, self.rotarm
 
     def participant2robot_new2(self, position: dict, rotation: dict, weight: list):
+        # ----- モーションキャプチャ座標系からxArm座標系への変換（回転のみ） ----- #
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())
-
-        # ----- モーションキャプチャ座標系からxArm座標系への変換（回転のみ） ----- #
         for i in range(self.participantNum):
             key = keys_list[i]
             rotation[key] = [rotation[key][j] for j in order]
