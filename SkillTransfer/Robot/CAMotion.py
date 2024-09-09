@@ -210,6 +210,89 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
+    def participant2robot_new2(self, position: dict, rotation: dict, weight: list):
+        order = [2, 1, 0, 3]
+        keys_list = list(rotation.keys())
+
+        # ----- モーションキャプチャ座標系からxArm座標系への変換（回転のみ） ----- #
+        for i in range(self.participantNum):
+            key = keys_list[i]
+            rotation[key] = [rotation[key][j] for j in order]
+
+            if i % 2 == 0:
+                rotation[key][1] = -1 * rotation[key][1]
+            elif i % 2 == 1:
+                rotation[key][2] = -1 * rotation[key][2]
+
+        # ----- positionを辞書に変換 ----- #
+        if type(position) is np.ndarray:
+            position = self.NumpyArray2Dict(position)
+
+        # ----- rotationを辞書に変換 ----- #
+        if type(rotation) is np.ndarray:
+            rotation = self.NumpyArray2Dict(rotation)
+
+        # ----- 共有変換の初期化 ----- #
+        sharedPosition_left = [0, 0, 0]
+        sharedPosition_right = [0, 0, 0]
+
+        sharedRotation_euler_left = [0, 0, 0]
+        sharedRotation_euler_right = [0, 0, 0]
+
+        for i in range(self.participantNum):
+            # ----- 位置の処理 ----- #
+            diffPos = position["participant" + str(i + 1)] - self.beforePositions["participant" + str(i + 1)]
+            weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
+
+            if i % 2 == 0:
+                sharedPosition_left += weightedPos
+            elif i % 2 == 1:
+                sharedPosition_right += weightedPos
+
+            self.weightedPositions["participant" + str(i + 1)] = weightedPos
+            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
+
+            # ----- 回転の処理 ----- #
+            qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
+            mat4x4 = np.array([
+                    [qw, qz, -qy, qx],
+                    [-qz, qw, qx, qy],
+                    [qy, -qx, qw, qz],
+                    [-qx, -qy, -qz, qw]])
+            currentRot = rotation["participant" + str(i + 1)]
+            diffRot = np.dot(np.linalg.inv(mat4x4), currentRot)
+            diffRotEuler = self.Quaternion2Euler(np.array(diffRot))
+
+            weightedDiffRotEuler = list(map(lambda x: x * weight[1][i], diffRotEuler))
+            weightedDiffRot = self.Euler2Quaternion(np.array(weightedDiffRotEuler))
+
+            # `rotate_angle`の計算と適用
+            rotate_angle = self.calculate_rotate_angle(currentRot["participant" + str(i + 1)], rotation['otherRigidBody' + str(i + 1)])
+            if abs(rotate_angle) < 90:
+                weightedDiffRot = self.add_rotation(self.Quaternion2Euler(weightedDiffRot), rotate_angle)
+            else:
+                pass
+
+            nqw, nqx, nqy, nqz = weightedDiffRot[3], weightedDiffRot[0], weightedDiffRot[1], weightedDiffRot[2]
+            neomat4x4 = np.array([ [nqw, -nqz, nqy, nqx],
+                                [nqz, nqw, -nqx, nqy],
+                                [-nqy, nqx, nqw, nqz],
+                                [-nqx, -nqy, -nqz, nqw]])
+            weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
+
+            if i % 2 == 0:
+                sharedRotation_euler_left += self.Quaternion2Euler(weightedRot)
+            elif i % 2 == 1:
+                sharedRotation_euler_right += self.Quaternion2Euler(weightedRot)
+
+            self.weightedRotations["participant" + str(i + 1)] = weightedRot
+            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
+
+        self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
+        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+
+        return self.posarm, self.rotarm
+
     def calculate_local_rotation_angle_z_common(self, participant, other):
         """ Calculate the local rotation angle between two rotation matrices with a common local z-axis """
         participant_matrix = self.quaternion_to_rotation_matrix(participant)
@@ -801,3 +884,16 @@ class CAMotion:
             [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]
         ])
         return rotation_matrix
+
+    def add_rotation(self, original_euler, angle_deg):
+        # オイラー角をクォータニオンに変換
+        r_original = R.from_euler('xyz', original_euler, degrees=True)
+        
+        # 回転角度をクォータニオンに変換（y軸の回転として指定）
+        r_rotation = R.from_euler('y', angle_deg, degrees=True)
+        
+        # クォータニオンの回転を適用
+        r_result =  r_original * r_rotation
+        
+        # 結果をオイラー角に変換して返す
+        return r_result.as_euler('xyz', degrees=True)

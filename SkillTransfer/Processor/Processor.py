@@ -148,9 +148,9 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
                     # print(caMotion.Quaternion2Euler(relativeRotation['participant2']))
 
-                    robotpos, robotrot = caMotion.participant2robot_new(relativePosition, relativeRotation, weightList)
-                    rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
-                    print(rotate_angle)
+                    robotpos, robotrot = caMotion.participant2robot_new2(relativePosition, relativeRotation, weightList)
+                    # rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
+                    # print(rotate_angle)
                     # robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
 
                     if isEnablexArm:
@@ -363,16 +363,3 @@ class ProcessorClass:
             pass
         else:
             time.sleep(sleeptime)
-
-    def add_rotation(self, original_euler, angle_deg):
-        # オイラー角をクォータニオンに変換
-        r_original = R.from_euler('xyz', original_euler, degrees=True)
-        
-        # 回転角度をクォータニオンに変換（y軸の回転として指定）
-        r_rotation = R.from_euler('y', angle_deg, degrees=True)
-        
-        # クォータニオンの回転を適用
-        r_result =  r_original * r_rotation
-        
-        # 結果をオイラー角に変換して返す
-        return r_result.as_euler('xyz', degrees=True)
