@@ -224,11 +224,9 @@ class CAMotion:
             elif i % 2 == 1:
                 rotation[key][2] = -1 * rotation[key][2]
 
-        # ----- positionを辞書に変換 ----- #
+        # ----- 辞書に変換 ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
-
-        # ----- rotationを辞書に変換 ----- #
         if type(rotation) is np.ndarray:
             rotation = self.NumpyArray2Dict(rotation)
 
@@ -240,7 +238,7 @@ class CAMotion:
         sharedRotation_euler_right = [0, 0, 0]
 
         for i in range(self.participantNum):
-            # ----- 位置の処理 ----- #
+            # ----- position ----- #
             diffPos = position["participant" + str(i + 1)] - self.beforePositions["participant" + str(i + 1)]
             weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
 
@@ -252,7 +250,7 @@ class CAMotion:
             self.weightedPositions["participant" + str(i + 1)] = weightedPos
             self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
 
-            # ----- 回転の処理 ----- #
+            # ----- rotation ----- #
             qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
             mat4x4 = np.array([
                     [qw, qz, -qy, qx],
@@ -266,7 +264,7 @@ class CAMotion:
             weightedDiffRotEuler = list(map(lambda x: x * weight[1][i], diffRotEuler))
             weightedDiffRot = self.Euler2Quaternion(np.array(weightedDiffRotEuler))
 
-            # `rotate_angle`の計算と適用
+            # ----- rotate ----- #
             rotate_angle = self.calculate_rotate_angle(currentRot["participant" + str(i + 1)], rotation['otherRigidBody' + str(i + 1)])
             if abs(rotate_angle) < 90:
                 weightedDiffRot = self.add_rotation(self.Quaternion2Euler(weightedDiffRot), rotate_angle)
