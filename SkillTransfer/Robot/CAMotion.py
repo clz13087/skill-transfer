@@ -292,65 +292,6 @@ class CAMotion:
         self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
 
         return self.posarm, self.rotarm
-
-    def calculate_local_rotation_angle_z_common(self, participant, other):
-        """ Calculate the local rotation angle between two rotation matrices with a common local z-axis """
-        participant_matrix = self.quaternion_to_rotation_matrix(participant)
-        other_matrix = self.quaternion_to_rotation_matrix(other)
-
-        # Extract the x and y axes (first two columns) from the rotation matrices
-        x1, y1 = participant_matrix[:, 0], participant_matrix[:, 1]
-        x2, y2 = other_matrix[:, 0], other_matrix[:, 1]
-        
-        # Calculate the angle between the x-axes
-        cos_angle_x = np.dot(x1, x2) / (np.linalg.norm(x1) * np.linalg.norm(x2))
-        angle_rad_x = np.arccos(np.clip(cos_angle_x, -1.0, 1.0))  # Clip to avoid numerical errors
-
-        # Convert radians to degrees
-        angle_deg_x = np.degrees(angle_rad_x)
-
-        # The angle between the y-axes should be the same due to the common z-axis
-        return angle_deg_x
-
-    def quaternion_angle_deg(self, quat1, quat2):
-        """ Calculate the angle in degrees between two quaternions """
-        # Normalize the quaternions
-        quat1 = quat1 / np.linalg.norm(quat1)
-        quat2 = quat2 / np.linalg.norm(quat2)
-        
-        # Calculate the dot product
-        dot_product = np.dot(quat1, quat2)
-        
-        # Ensure the dot product is within the valid range [-1, 1]
-        dot_product = np.clip(dot_product, -1.0, 1.0)
-        
-        # Calculate the angle in radians
-        angle_rad = 2 * np.arccos(dot_product)
-        
-        # Convert radians to degrees
-        angle_deg = np.degrees(angle_rad)
-        
-        return angle_deg
-
-    def quaternion_angle_deg_same_axis(self, quat1, quat2):
-        """ Calculate the angle in degrees between two quaternions with the same axis (x, y, z) """
-        # Extract the w components
-        w1 = quat1[3]
-        w2 = quat2[3]
-        
-        # Calculate the difference in the w components
-        dot_product = w1 - w2
-        
-        # Ensure the dot product is within the valid range [-1, 1]
-        dot_product = np.clip(dot_product, -1.0, 1.0)
-        
-        # Calculate the angle in radians
-        angle_rad = 2 * np.arccos(dot_product)
-        
-        # Convert radians to degrees
-        angle_deg = np.degrees(angle_rad)
-        
-        return angle_deg
     
     def calculate_rotate_angle(self, quat1, quat2):
         """
