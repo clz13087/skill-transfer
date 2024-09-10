@@ -30,6 +30,9 @@ class CAMotion:
     beforeRotations = {}
     weightedRotations = {}
 
+    beforeRotateAngles =  {}
+    weightedRotateAngles = {}
+
     def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int) -> None:
         for i in range(defaultParticipantNum):
             self.originPositions["participant" + str(i + 1)] = np.zeros(3)
@@ -45,6 +48,8 @@ class CAMotion:
         for i in range(otherRigidBodyNum):
             self.originPositions["otherRigidBody" + str(i + 1)] = np.zeros(3)
             self.inversedMatrix["otherRigidBody" + str(i + 1)] = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+            self.beforeRotateAngles["otherRigidBody" + str(i + 1)] = 0
+            self.weightedRotateAngles["otherRigidBody" + str(i + 1)] = 0
 
         self.participantNum = defaultParticipantNum
         self.otherRigidBodyNum = otherRigidBodyNum
@@ -236,6 +241,9 @@ class CAMotion:
         sharedRotation_euler_left = [0, 0, 0]
         sharedRotation_euler_right = [0, 0, 0]
 
+        sharedRotate_angle_left = 0
+        sharedRotate_angle_right = 0
+
         for i in range(self.participantNum):
             # ----- position ----- #
             diffPos = position["participant" + str(i + 1)] - self.beforePositions["participant" + str(i + 1)]
@@ -263,13 +271,6 @@ class CAMotion:
             weightedDiffRotEuler = list(map(lambda x: x * weight[1][i], diffRotEuler))
             weightedDiffRot = self.Euler2Quaternion(np.array(weightedDiffRotEuler))
 
-            # ----- rotate ----- #
-            rotate_angle = self.calculate_rotate_angle(currentRot["participant" + str(i + 1)], rotation['otherRigidBody' + str(i + 1)])
-            if abs(rotate_angle) < 90:
-                weightedDiffRot = self.add_rotation(self.Quaternion2Euler(weightedDiffRot), rotate_angle)
-            else:
-                pass
-
             nqw, nqx, nqy, nqz = weightedDiffRot[3], weightedDiffRot[0], weightedDiffRot[1], weightedDiffRot[2]
             neomat4x4 = np.array([ [nqw, -nqz, nqy, nqx],
                                 [nqz, nqw, -nqx, nqy],
@@ -284,6 +285,31 @@ class CAMotion:
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
+
+            # ----- rotate ----- #
+            beforeRotateAngle = self.beforeRotateAngles["otherRigidBody" + str(i + 1)]
+            currentRotateAngle = self.calculate_rotate_angle(currentRot["participant" + str(i + 1)], rotation['otherRigidBody' + str(i + 1)])
+            diffRotateAngle = currentRotateAngle - beforeRotateAngle
+            weightedDiffRotateAngle = list(map(lambda x: x * weight[1][i], diffRotateAngle))
+            weightedRotateAngle = self.weightedRotateAngles["otherRigidBody" + str(i + 1)] + weightedDiffRotateAngle
+
+            if i % 2 == 0:
+                sharedRotate_angle_left += weightedRotateAngle
+            elif i % 2 == 1:
+                sharedRotate_angle_right += weightedRotateAngle
+
+            self.weightedRotateAngles["otherRigidBody" + str(i + 1)] = weightedRotateAngle
+            self.beforeRotateAngles["otherRigidBody" + str(i + 1)] = currentRotateAngle
+
+            if abs(sharedRotate_angle_left) < 90:
+                sharedRotation_euler_left = self.add_rotation(sharedRotation_euler_left, sharedRotate_angle_left)
+            else:
+                pass
+
+            if abs(sharedRotate_angle_right) < 90:
+                sharedRotation_euler_right = self.add_rotation(sharedRotation_euler_right, sharedRotate_angle_right)
+            else:
+                pass
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
         self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
