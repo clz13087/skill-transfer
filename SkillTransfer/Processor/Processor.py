@@ -156,7 +156,7 @@ class ProcessorClass:
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
                         # code_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False)
                         # code_2 = arm_2.set_servo_angle(servo_id=7, angle=100+rotate_angle, is_radian=False, wait=True)
 
