@@ -26,7 +26,7 @@ bendingSensorCom4,COM17
 bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
-isExportData,True
+isExportData,False
 dirPath,C:\Users\hapticslab\Documents\tsugumi\si2024\pre\tsuruoka\1
 
 participantNum,4
