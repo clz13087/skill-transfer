@@ -146,28 +146,13 @@ class ProcessorClass:
 
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
-                    # print(caMotion.Quaternion2Euler(relativeRotation['participant2']))
 
-                    robotpos, robotrot = caMotion.participant2robot_new2(relativePosition, relativeRotation, weightList)
-                    # rotate_angle = caMotion.calculate_rotate_angle(relativeRotation['participant2'], relativeRotation['otherRigidBody1'])
-                    # print(rotate_angle)
-                    # robotrot["robot2"] = self.add_rotation(robotrot["robot2"], rotate_angle)
+                    robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-                        # code_2 = arm_2.set_servo_angle(servo_id=7, angle=0, is_radian=False)
-                        # code_2 = arm_2.set_servo_angle(servo_id=7, angle=100+rotate_angle, is_radian=False, wait=True)
-
-                        # arm_2_angles = arm_2.angles
-                        # arm_2_angles[6] += rotate_angle
-                        # print(arm_2_angles)
-                        # code_2 = arm_2.set_servo_angle_j(angles=arm_2_angles, is_radian=False)
-
-
-                        # print(arm_2.angles)
-                        # print(100+rotate_angle)
 
                     # ----- Bending sensor ----- #
                     # if self.gripperNum != 0:
