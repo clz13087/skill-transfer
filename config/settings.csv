@@ -27,13 +27,13 @@ bendingSensorCom5,COM17
 bendingSensorCom6,COM14
 
 isExportData,True
-dirPath,C:\Users\hapticslab\Documents\tsugumi\si2024\pre\1
+dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\1
 
 participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
-weightListPos,0,0,0,0
-weightListRot,0,0,0,0
+weightListPos,0,1,0,0
+weightListRot,0,1,0,0
 weightGripperList,0,0,0,0,0,0
