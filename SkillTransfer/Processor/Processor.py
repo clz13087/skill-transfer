@@ -154,16 +154,6 @@ class ProcessorClass:
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
-                    # ----- Bending sensor ----- #
-                    # if self.gripperNum != 0:
-                    #     dictGripperValue_R, dictGripperValue_P = (participantMotion.GripperControlValue(weight=weightGripperList, loopCount=self.loopCount))
-
-                    # ----- Gripper control ----- #
-                    # if isEnablexArm:
-                    #     if self.gripperNum != 0:
-                    #         code_1, ret_1 = arm_1.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue1"]))
-                    #         code_2, ret_2 = arm_2.getset_tgpio_modbus_data(self.ConvertToModbusData(dictGripperValue_R["gripperValue2"]))
-
                     # ----- Data recording ----- #
                     if self.isExportData:
                         # dataRecordManager.Record(relativePosition, relativeRotation, weightList, dictGripperValue_P, robotpos, robotrot, dictGripperValue_R, time.perf_counter() - taskStartTime)
@@ -211,6 +201,7 @@ class ProcessorClass:
                     elif keycode == "s":
                         time.sleep(5)
                         winsound.Beep(1000,1000)
+                        print("\007")
 
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")

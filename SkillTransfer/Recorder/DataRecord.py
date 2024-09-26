@@ -95,25 +95,17 @@ class DataRecordManager:
 
         for i in range(self.participantNum):
             self.dictPosition["participant" + str(i + 1)].append(position["participant" + str(i + 1)])
-            self.dictRotation["participant" + str(i + 1)].append(self.Quaternion2Euler(q=rotation["participant" + str(i + 1)]))
+            self.dictRotation["participant" + str(i + 1)].append(rotation["participant" + str(i + 1)])
             self.dictWeightPosition["participant" + str(i + 1)].append(weight[0][i])
             self.dictWeightRotation["participant" + str(i + 1)].append(weight[1][i])
 
         for i in range(self.otherRigidBodyNum):
             self.dictPosition["otherRigidBody" + str(i + 1)].append(position["otherRigidBody" + str(i + 1)])
-            self.dictRotation["otherRigidBody" + str(i + 1)].append(self.Quaternion2Euler(q=rotation["otherRigidBody" + str(i + 1)]))
-
-        # for i in range(self.bendingSensorNum):
-        #     self.dictGripperValue_P["gripperValue_P" + str(i + 1)].append([Gripper_P["gripperValue" + str(i + 1)]])
+            self.dictRotation["otherRigidBody" + str(i + 1)].append(rotation["otherRigidBody" + str(i + 1)])
 
         for i in range(self.robotNum):
             self.dictRobotPosition["robot" + str(i + 1)].append(robotpos["robot" + str(i + 1)])
             self.dictRobotRotation["robot" + str(i + 1)].append(robotrot["robot" + str(i + 1)])
-
-        # for i in range(self.robotNum):
-        #     self.dictGripperValue_R["gripperValue_R" + str(i + 1)].append([float(Gripper_R["gripperValue" + str(i + 1)])])
-
-        # self.dictRobotHead.append(self.udp.robot_head)
 
     def ExportSelf(self, dirPath: str = "ExportData", participant: str = "", conditions: str = "", number: str = ""):
         """
@@ -124,10 +116,8 @@ class DataRecordManager:
         dirPath: (Optional) str
             Directory path (not include the file name).
         """
-        # transformHeader = ["time", "x", "y", "z", "qx", "qy", "qz", "qw", "weightpos", "weightrot"]
-        transformHeader = ["time", "x", "y", "z", "roll", "pitch", "yaw", "weightpos", "weightrot"]
-        GripperHeader = ["GripperValue"]
-        robotHeader = ["time", "x", "y", "z", "roll", "pitch", "yaw"]
+        transformHeader = ["time", "x", "y", "z", "qx", "qy", "qz", "qw", "weightpos", "weightrot"]
+        robotHeader = ["time", "x", "y", "z", "qx", "qy", "qz", "qw"]
         headHeader = ["time", "x", "y", "z", "rx", "ry", "rz"]
 
         print("\n---------- DataRecordManager.ExportSelf ----------")
