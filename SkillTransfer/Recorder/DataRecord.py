@@ -92,7 +92,7 @@ class DataRecordManager:
         bendingSensor: dict
             Bending sensor values
         """
-        current_time = time.time()
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.dictTime.append([current_time])
 
         self.dictDurationTime.append([duration])
