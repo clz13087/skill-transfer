@@ -156,25 +156,7 @@ class ProcessorClass:
 
                     # ----- Data recording ----- #
                     if self.isExportData:
-                        # dataRecordManager.Record(relativePosition, relativeRotation, weightList, dictGripperValue_P, robotpos, robotrot, dictGripperValue_R, time.perf_counter() - taskStartTime)
                         dataRecordManager.Record(position=relativePosition, rotation=relativeRotation, weight=weightList, robotpos=robotpos, robotrot=robotrot, duration=time.perf_counter() - taskStartTime)
-
-                    # ----- If xArm error has occured ----- #
-                    # if isEnablexArm and arm_1.has_err_warn:
-                        # arm_1.clean_error()
-                        # print("arm1 error")
-                    #     isMoving = False
-                    #     self.errorCount += 1
-                    #     self.taskTime.append(time.perf_counter() - taskStartTime)
-                    #     print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
-
-                    # if isEnablexArm and arm_2.has_err_warn:
-                    #     print("arm2 error")
-
-                    #     isMoving = False
-                    #     self.errorCount += 1
-                    #     self.taskTime.append(time.perf_counter() - taskStartTime)
-                    #     print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
 
                     # ---------- fix framerate ---------- #
                     self.fix_framerate((time.perf_counter() - loop_start_time), 1/self.frameRate)
@@ -205,7 +187,6 @@ class ProcessorClass:
                     elif keycode == "s":
                         time.sleep(5)
                         winsound.Beep(1000,1000)
-                        # print("\007")
 
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
