@@ -201,7 +201,7 @@ class ProcessorClass:
                     elif keycode == "s":
                         time.sleep(5)
                         winsound.Beep(1000,1000)
-                        print("\007")
+                        # print("\007")
 
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
