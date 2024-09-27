@@ -160,16 +160,16 @@ class ProcessorClass:
                         dataRecordManager.Record(position=relativePosition, rotation=relativeRotation, weight=weightList, robotpos=robotpos, robotrot=robotrot, duration=time.perf_counter() - taskStartTime)
 
                     # ----- If xArm error has occured ----- #
-                    if isEnablexArm and arm_1.has_err_warn:
+                    # if isEnablexArm and arm_1.has_err_warn:
                         # arm_1.clean_error()
-                        print("arm1 error")
+                        # print("arm1 error")
                     #     isMoving = False
                     #     self.errorCount += 1
                     #     self.taskTime.append(time.perf_counter() - taskStartTime)
                     #     print('[ERROR] >> xArm Error has occured. Please enter "r" to reset xArm, or "q" to quit')
 
-                    if isEnablexArm and arm_2.has_err_warn:
-                        print("arm2 error")
+                    # if isEnablexArm and arm_2.has_err_warn:
+                    #     print("arm2 error")
 
                     #     isMoving = False
                     #     self.errorCount += 1
