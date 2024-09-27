@@ -92,8 +92,13 @@ class DataRecordManager:
         bendingSensor: dict
             Bending sensor values
         """
-        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.dictTime.append([current_time])
+        current_time = time.time()
+        formatted_time = time.strftime("%Y%m%d.%H%M%S", time.localtime(current_time))
+        milliseconds = int((current_time - int(current_time)) * 1000)  # ミリ秒部分を計算
+        formatted_time_with_milliseconds = f"{formatted_time}.{milliseconds:03d}"  # ミリ秒を含める
+
+        # フォーマット済みの時刻を記録
+        self.dictTime.append([formatted_time_with_milliseconds])
 
         self.dictDurationTime.append([duration])
 
