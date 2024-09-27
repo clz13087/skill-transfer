@@ -180,8 +180,6 @@ class ProcessorClass:
                         if isEnablexArm:
                             self.InitializeAll(arm_1, transform_left)
                             self.InitializeAll(arm_2, transform_right)
-                            # self.InitRobotArm(arm, transform)
-                            # self.InitGripper(arm)
 
                     # ----- Start streaming ----- #
                     elif keycode == "s":
@@ -200,11 +198,9 @@ class ProcessorClass:
                         # ----- weight slider list ----- #
                         self.weightGripperList[0].remove("weightGripperList")
                         weightGripperListstr = self.weightGripperList[0]
-                        weightGripperList = list(map(float, weightGripperListstr))
 
                         caMotion.SetOriginPosition(participantMotion.LocalPosition())
                         caMotion.SetInversedMatrix(participantMotion.LocalRotation())
-                        # participantMotion.SetInitialBendingValue()
 
                         isMoving = True
                         taskStartTime = loop_start_time = time.perf_counter()
