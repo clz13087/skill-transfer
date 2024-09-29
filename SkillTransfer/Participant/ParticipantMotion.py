@@ -15,15 +15,11 @@ originalMin = 0
 originalMax = 1
 
 class ParticipantMotion:
-    def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int, motionInputSystem: str = "optitrack", mocapServer: str = "", mocapLocal: str = "", gripperInputSystem: str = "bendingsensor",
-        bendingSensorNum: int = 1, BendingSensor_ConnectionMethod: str = "wireless", recordedGripperValueNum: int = 0, bendingSensorUdpIpAddress: str = "192.168.80.142", bendingSensorUdpPort: list = [9000, 9001], bendingSensorSerialCOMs: list = []) -> None:
+    def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int, motionInputSystem: str = "optitrack", mocapServer: str = "", mocapLocal: str = "") -> None:
 
         self.defaultParticipantNum = defaultParticipantNum
         self.otherRigidBodyNum = otherRigidBodyNum
         self.motionInputSystem = motionInputSystem
-        self.gripperInputSystem = gripperInputSystem
-        self.bendingSensorNum = bendingSensorNum
-        self.recordedGripperValueNum = recordedGripperValueNum
         self.udpManager = None
         self.recordedMotion = {}
         self.recordedGripperValue = {}
@@ -51,27 +47,27 @@ class ParticipantMotion:
             streamingThread.start()
 
         # ----- Initialize gripper control system ----- #
-        if gripperInputSystem == "bendingsensor":
-            self.bendingSensors = []
+        # if gripperInputSystem == "bendingsensor":
+        #     self.bendingSensors = []
 
-            if BendingSensor_ConnectionMethod == "wireless":
-                self.ip = [bendingSensorUdpIpAddress, bendingSensorUdpIpAddress]
-                self.port = bendingSensorUdpPort
-            elif BendingSensor_ConnectionMethod == "wired":
-                self.ip = bendingSensorSerialCOMs
-                self.port = bendingSensorUdpPort
+        #     if BendingSensor_ConnectionMethod == "wireless":
+        #         self.ip = [bendingSensorUdpIpAddress, bendingSensorUdpIpAddress]
+        #         self.port = bendingSensorUdpPort
+        #     elif BendingSensor_ConnectionMethod == "wired":
+        #         self.ip = bendingSensorSerialCOMs
+        #         self.port = bendingSensorUdpPort
 
-            for i in range(bendingSensorNum):
-                bendingSensorManager = BendingSensorManager(BendingSensor_connectionmethod=BendingSensor_ConnectionMethod, ip=self.ip[i], port=self.port[i])
-                self.bendingSensors.append(bendingSensorManager)
+        #     for i in range(bendingSensorNum):
+        #         bendingSensorManager = BendingSensorManager(BendingSensor_connectionmethod=BendingSensor_ConnectionMethod, ip=self.ip[i], port=self.port[i])
+        #         self.bendingSensors.append(bendingSensorManager)
 
-                # ----- Start receiving bending sensor value from UDP socket ----- #
-                bendingSensorThread = threading.Thread(target=bendingSensorManager.StartReceiving)
-                bendingSensorThread.setDaemon(True)
-                bendingSensorThread.start()
+        #         # ----- Start receiving bending sensor value from UDP socket ----- #
+        #         bendingSensorThread = threading.Thread(target=bendingSensorManager.StartReceiving)
+        #         bendingSensorThread.setDaemon(True)
+        #         bendingSensorThread.start()
 
-            # ----- Set init value ----- #
-            self.SetInitialBendingValue()
+        #     # ----- Set init value ----- #
+        #     self.SetInitialBendingValue()
 
     def SetInitialBendingValue(self):
         """

@@ -4,6 +4,7 @@ import threading
 import time
 import winsound
 import csv
+import os
 from ctypes import windll
 from datetime import datetime
 from enum import Flag
@@ -103,7 +104,7 @@ class ProcessorClass:
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, mount="left")
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, mount="right")
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
-        participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, gripperInputSystem=gripperDataInputMode, bendingSensorNum=self.gripperNum, BendingSensor_ConnectionMethod="wired", bendingSensorUdpIpAddress=self.wirelessIpAddress, bendingSensorUdpPort=self.bendingSensorPorts, bendingSensorSerialCOMs=self.bendingSensorComs)
+        participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
 
         # ----- Initialize robot arm ----- #
         if isEnablexArm:
@@ -136,7 +137,7 @@ class ProcessorClass:
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
@@ -168,8 +169,14 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         # ----- Load recorded data. ----- #
-                        participant3_data = self.load_csv_data(self.recordedDataPath + "/" + "Transform_Participant_1*")
-                        participant4_data = self.load_csv_data(self.recordedDataPath + "/" + "Transform_Participant_2*")
+                        now_dir = os.getcwd()
+                        print(os.path.join(self.recordedDataPath, "Transform_Participant_1*"))
+                        os.chdir(self.recordedDataPath)
+                        # participant3_data = self.load_csv_data(os.())
+                        os.chdir(now_dir)
+                        # participant3_data = self.load_csv_data(os.path.join(self.recordedDataPath, "Transform_Participant_1*"))
+                        # participant3_data = self.load_csv_data(self.recordedDataPath + "" + "Transform_Participant_1*")
+                        participant4_data = self.load_csv_data(self.recordedDataPath + "" + "Transform_Participant_2*")
 
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
@@ -306,7 +313,7 @@ class ProcessorClass:
         else:
             time.sleep(sleeptime)
 
-    def load_csv_data(file_path):
+    def load_csv_data(self, file_path):
         with open(file_path, 'r') as csvfile:
             reader = csv.DictReader(csvfile)
             data = []

@@ -19,7 +19,7 @@ gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
-recordedDataPath,/Users/sanolab/this mac/大学/研究室/M2/SI2024/expertdata/mocap/1
+recordedDataPath,~\Documents\User\tsugumi\si2024\expertdata\31
 
 weightListPos,0,0,1,1
 weightListRot,0,0,1,1
