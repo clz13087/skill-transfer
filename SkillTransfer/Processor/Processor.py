@@ -5,6 +5,7 @@ import time
 import winsound
 import csv
 import os
+import glob
 from ctypes import windll
 from datetime import datetime
 from enum import Flag
@@ -100,11 +101,11 @@ class ProcessorClass:
         taskStartTime = 0
 
         # ----- Instantiating custom classes ----- #
-        caMotion = CAMotion(defaultParticipantNum=4, otherRigidBodyNum=self.otherRigidBodyNum)
+        caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, mount="left")
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, mount="right")
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
-        participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
+        participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
 
         # ----- Initialize robot arm ----- #
         if isEnablexArm:
@@ -136,8 +137,8 @@ class ProcessorClass:
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
-                        arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        # arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
@@ -169,14 +170,10 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         # ----- Load recorded data. ----- #
-                        now_dir = os.getcwd()
-                        print(os.path.join(self.recordedDataPath, "Transform_Participant_1*"))
-                        os.chdir(self.recordedDataPath)
-                        # participant3_data = self.load_csv_data(os.())
-                        os.chdir(now_dir)
-                        # participant3_data = self.load_csv_data(os.path.join(self.recordedDataPath, "Transform_Participant_1*"))
-                        # participant3_data = self.load_csv_data(self.recordedDataPath + "" + "Transform_Participant_1*")
-                        participant4_data = self.load_csv_data(self.recordedDataPath + "" + "Transform_Participant_2*")
+                        participant3_path = os.path.join(self.recordedDataPath, "*Transform_Participant_1*.csv")
+                        participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
+                        participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
+                        participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
 
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
@@ -188,7 +185,7 @@ class ProcessorClass:
                         weightList = [weightListPosfloat,weightListRotfloat]
 
                         # ----- A beep sounds after 5 seconds. ----- #
-                        time.sleep(5)
+                        time.sleep(2)
                         winsound.Beep(1000,1000)
 
                         caMotion.SetOriginPosition(participantMotion.LocalPosition())

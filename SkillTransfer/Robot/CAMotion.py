@@ -31,7 +31,7 @@ class CAMotion:
     weightedRotations = {}
 
     def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int) -> None:
-        for i in range(defaultParticipantNum):
+        for i in range(4):
             self.originPositions["participant" + str(i + 1)] = np.zeros(3)
             self.inversedMatrixforPosition["participant" + str(i + 1)] = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
             self.inversedMatrix["participant" + str(i + 1)] = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
@@ -70,7 +70,7 @@ class CAMotion:
         # ----- change cordinate from motive to xArm (only rotation) ----- #
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())
-        for i in range(self.participantNum):
+        for i in range(4):
             key = keys_list[i]
             rotation[key] = [rotation[key][j] for j in order]
 
@@ -92,9 +92,9 @@ class CAMotion:
         sharedRotation_euler_left = [0, 0, 0]
         sharedRotation_euler_right = [0, 0, 0]
 
-        for i in range(self.participantNum):
+        for i in range(4):
             # ----- position ----- #
-            diffPos = position["participant" + str(i + 1)] - self.beforePositions["participant" + str(i + 1)]
+            diffPos = np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])
             weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
 
             if i % 2 == 0:
