@@ -12,20 +12,6 @@ wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
 frameRate,200
 
-bendingSensorPortParticipant1,9600
-bendingSensorPortParticipant2,9600
-bendingSensorPortParticipant3,115200
-bendingSensorPortParticipant4,115200
-bendingSensorPortParticipant5,115200
-bendingSensorPortParticipant6,115200
-         
-bendingSensorCom1,COM17
-bendingSensorCom2,COM3
-bendingSensorCom3,COM18
-bendingSensorCom4,COM17
-bendingSensorCom5,COM17
-bendingSensorCom6,COM14
-
 isExportData,False
 dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\38
 participantNum,2
@@ -33,6 +19,7 @@ gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
-weightListPos,0,1,0,0
-weightListRot,0,1,0,0
-weightGripperList,0,0,0,0,0,0
+recordedDataPath,/Users/sanolab/this mac/大学/研究室/M2/SI2024/expertdata/mocap/1
+
+weightListPos,0,0,1,1
+weightListRot,0,0,1,1

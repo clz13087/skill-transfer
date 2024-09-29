@@ -3,6 +3,7 @@ import pprint
 import threading
 import time
 import winsound
+import csv
 from ctypes import windll
 from datetime import datetime
 from enum import Flag
@@ -42,20 +43,6 @@ class ProcessorClass:
         motivelocalIP = [addr for addr in dat if "motiveLocalIPAddress" in addr[0]][0][1]
         frameRate = [addr for addr in dat if "frameRate" in addr[0]][0][1]
 
-        bendingSensorPortParticipant1 = [addr for addr in dat if "bendingSensorPortParticipant1" in addr[0]][0][1]
-        bendingSensorPortParticipant2 = [addr for addr in dat if "bendingSensorPortParticipant2" in addr[0]][0][1]
-        bendingSensorPortParticipant3 = [addr for addr in dat if "bendingSensorPortParticipant3" in addr[0]][0][1]
-        bendingSensorPortParticipant4 = [addr for addr in dat if "bendingSensorPortParticipant4" in addr[0]][0][1]
-        bendingSensorPortParticipant5 = [addr for addr in dat if "bendingSensorPortParticipant5" in addr[0]][0][1]
-        bendingSensorPortParticipant6 = [addr for addr in dat if "bendingSensorPortParticipant6" in addr[0]][0][1]
-
-        bendingSensorCom1 = [addr for addr in dat if "bendingSensorCom1" in addr[0]][0][1]
-        bendingSensorCom2 = [addr for addr in dat if "bendingSensorCom2" in addr[0]][0][1]
-        bendingSensorCom3 = [addr for addr in dat if "bendingSensorCom3" in addr[0]][0][1]
-        bendingSensorCom4 = [addr for addr in dat if "bendingSensorCom4" in addr[0]][0][1]
-        bendingSensorCom5 = [addr for addr in dat if "bendingSensorCom5" in addr[0]][0][1]
-        bendingSensorCom6 = [addr for addr in dat if "bendingSensorCom6" in addr[0]][0][1]
-
         isExportData =  [addr for addr in dat if "isExportData" in addr[0]][0][1]
         if isExportData == "False":
             isExportData = 0
@@ -68,9 +55,10 @@ class ProcessorClass:
         otherRigidBodyNum = [addr for addr in dat if "otherRigidBodyNum" in addr[0]][0][1]
         robotNum = [addr for addr in dat if "robotNum" in addr[0]][0][1]
 
+        recordedDataPath = [addr for addr in dat if "recordedDataPath" in addr[0]][0][1]
+
         weightListPos = [addr for addr in dat if "weightListPos" in addr[0]]
         weightListRot = [addr for addr in dat if "weightListRot" in addr[0]]
-        weightGripperList = [addr for addr in dat if "weightGripperList" in addr[0]]
 
         self.xArmIpAddress_left = xArmIP_left
         self.initialpos_left = initialpos_left
@@ -86,9 +74,6 @@ class ProcessorClass:
         self.motivelocalIpAddress = motivelocalIP
         self.frameRate = int(frameRate)
 
-        self.bendingSensorPorts = [int(bendingSensorPortParticipant1), int(bendingSensorPortParticipant2), int(bendingSensorPortParticipant3), int(bendingSensorPortParticipant4), int(bendingSensorPortParticipant5), int(bendingSensorPortParticipant6)]
-        self.bendingSensorComs = [bendingSensorCom1, bendingSensorCom2, bendingSensorCom3, bendingSensorCom4, bendingSensorCom5, bendingSensorCom6]
-
         self.isExportData = bool(isExportData)
         self.dirPath = dirPath
 
@@ -97,15 +82,10 @@ class ProcessorClass:
         self.otherRigidBodyNum = int(otherRigidBodyNum)
         self.robotNum = int(robotNum)
 
+        self.recordedDataPath = recordedDataPath
+
         self.weightListPos = weightListPos
         self.weightListRot = weightListRot
-        self.weightGripperList = weightGripperList
-
-        self.participantname = "卒論"
-        # self.condition = input('---実験条件---\nFB無し-->A, 相手-->B, ロボット-->C   :')
-        # self.number = input('---試行回数---\n何回目   :')
-        self.condition = "1"
-        self.number = "1"
 
     def mainloop(self, isEnablexArm: bool = True):
         """
@@ -117,10 +97,9 @@ class ProcessorClass:
         self.taskTime = []
         self.errorCount = 0
         taskStartTime = 0
-        rotate_flag = True
 
         # ----- Instantiating custom classes ----- #
-        caMotion = CAMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum)
+        caMotion = CAMotion(defaultParticipantNum=4, otherRigidBodyNum=self.otherRigidBodyNum)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, mount="left")
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, mount="right")
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
@@ -146,6 +125,11 @@ class ProcessorClass:
 
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
+
+                    relativePosition["participant3"] = participant3_data[self.loopCount]["position"]
+                    relativePosition["participant4"] = participant4_data[self.loopCount]["position"]
+                    relativeRotation["participant3"] = participant3_data[self.loopCount]["rotation"]
+                    relativeRotation["participant4"] = participant4_data[self.loopCount]["rotation"]
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
@@ -183,8 +167,9 @@ class ProcessorClass:
 
                     # ----- Start streaming ----- #
                     elif keycode == "s":
-                        time.sleep(5)
-                        winsound.Beep(1000,1000)
+                        # ----- Load recorded data. ----- #
+                        participant3_data = self.load_csv_data(self.recordedDataPath + "/" + "Transform_Participant_1*")
+                        participant4_data = self.load_csv_data(self.recordedDataPath + "/" + "Transform_Participant_2*")
 
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
@@ -195,9 +180,9 @@ class ProcessorClass:
                         weightListRotfloat = list(map(float, weightListRotstr))
                         weightList = [weightListPosfloat,weightListRotfloat]
 
-                        # ----- weight slider list ----- #
-                        self.weightGripperList[0].remove("weightGripperList")
-                        weightGripperListstr = self.weightGripperList[0]
+                        # ----- A beep sounds after 5 seconds. ----- #
+                        time.sleep(5)
+                        winsound.Beep(1000,1000)
 
                         caMotion.SetOriginPosition(participantMotion.LocalPosition())
                         caMotion.SetInversedMatrix(participantMotion.LocalRotation())
@@ -320,3 +305,15 @@ class ProcessorClass:
             pass
         else:
             time.sleep(sleeptime)
+
+    def load_csv_data(file_path):
+        with open(file_path, 'r') as csvfile:
+            reader = csv.DictReader(csvfile)
+            data = []
+            for row in reader:
+                data.append({
+                    "time": float(row["time"]),
+                    "position": [float(row["x"]), float(row["y"]), float(row["z"])],
+                    "rotation": [float(row["qx"]), float(row["qy"]), float(row["qz"]), float(row["qw"])]
+                })
+        return data
