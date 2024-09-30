@@ -129,15 +129,18 @@ class ProcessorClass:
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
-                    # 最終フレームのインデックスを計算
+                    # last index
                     last_index_participant3 = len(participant3_data) - 1
                     last_index_participant4 = len(participant4_data) - 1
 
                     # self.loopCountがデータの範囲を超えた場合は、最終フレームのデータを使用
                     relativePosition["participant3"] = participant3_data[min(self.loopCount, last_index_participant3)]["position"]
-                    relativePosition["participant4"] = participant4_data[min(self.loopCount, last_index_participant4)]["position"]
                     relativeRotation["participant3"] = participant3_data[min(self.loopCount, last_index_participant3)]["rotation"]
+
+                    relativePosition["participant4"] = participant4_data[min(self.loopCount, last_index_participant4)]["position"]
                     relativeRotation["participant4"] = participant4_data[min(self.loopCount, last_index_participant4)]["rotation"]
+
+                    print(relativePosition, relativeRotation)
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
@@ -216,7 +219,7 @@ class ProcessorClass:
                     print("Send stop to transparent")
 
             if self.isExportData:
-                dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
+                dataRecordManager.ExportSelf(dirPath=self.dirPath)
 
             # ----- Disconnect ----- #
             if isEnablexArm:

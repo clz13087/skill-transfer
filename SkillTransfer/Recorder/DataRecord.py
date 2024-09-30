@@ -116,7 +116,7 @@ class DataRecordManager:
             self.dictRobotPosition["robot" + str(i + 1)].append(robotpos["robot" + str(i + 1)])
             self.dictRobotRotation["robot" + str(i + 1)].append(robotrot["robot" + str(i + 1)])
 
-    def ExportSelf(self, dirPath: str = "ExportData", participant: str = "", conditions: str = "", number: str = ""):
+    def ExportSelf(self, dirPath: str = "ExportData"):
         """
         Export the data recorded in DataRecordManager as CSV format.
 
@@ -140,7 +140,7 @@ class DataRecordManager:
             npWeightRotation = np.array(self.dictWeightRotation["participant" + str(i + 1)])
             npParticipantTransform = np.concatenate([npPosition, npRotation], axis=1)
             npTimeParticipantTransform = np.c_[npTime, npDuration, npParticipantTransform, npWeightPosition, npWeightRotation]
-            self.ExportAsCSV(npTimeParticipantTransform, dirPath, "Transform_Participant_" + str(i + 1), participant, conditions, number, transformHeader)
+            self.ExportAsCSV(npTimeParticipantTransform, dirPath, "Transform_Participant_" + str(i + 1), transformHeader)
 
         print("Writing: Other rigid body transform...")
         for i in tqdm.tqdm(range(self.otherRigidBodyNum), ncols=150):
@@ -150,7 +150,7 @@ class DataRecordManager:
             npRotation = np.array(self.dictRotation["otherRigidBody" + str(i + 1)])
             npRigidBodyTransform = np.concatenate([npPosition, npRotation], axis=1)
             npTimeRigidBodyTransform = np.c_[npTime, npDuration, npRigidBodyTransform]
-            self.ExportAsCSV(npTimeRigidBodyTransform, dirPath, "OtherRigidBody_" + str(i + 1), participant, conditions, number, transformHeader)
+            self.ExportAsCSV(npTimeRigidBodyTransform, dirPath, "OtherRigidBody_" + str(i + 1), transformHeader)
 
         # print("Writing: Participant Gripper value...")
         # for i in tqdm.tqdm(range(self.bendingSensorNum), ncols=150):
@@ -165,7 +165,7 @@ class DataRecordManager:
             npRobotRotation = np.array(self.dictRobotRotation["robot" + str(i + 1)])
             npRobotTransform = np.concatenate([npRobotPosition, npRobotRotation], axis=1)
             npTimeRobotTransform = np.c_[npTime, npDuration, npRobotTransform]
-            self.ExportAsCSV(npTimeRobotTransform, dirPath, "Transform_Robot_" + str(i + 1), participant, conditions, number, robotHeader)
+            self.ExportAsCSV(npTimeRobotTransform, dirPath, "Transform_Robot_" + str(i + 1), robotHeader)
 
         # print("Writing: Robot Gripper value...")
         # for i in tqdm.tqdm(range(self.robotNum), ncols=150):
@@ -179,7 +179,7 @@ class DataRecordManager:
         # self.ExportAsCSV(npHeadOutput, dirPath, "Head_", participant, conditions, number, headHeader)
         # print("---------- Export completed ----------\n")
 
-    def ExportAsCSV(self, data, dirPath, fileName, participant, conditions, number, header: list = []):
+    def ExportAsCSV(self, data, dirPath, fileName, header: list = []):
         """
         Export the data to CSV file.
 
@@ -196,8 +196,6 @@ class DataRecordManager:
         """
         # ----- Check directory ----- #
         self.mkdir(dirPath)
-
-        # exportPath = dirPath + '/' + participant + '_' + conditions + '_' + number + '_' + fileName + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M') + '.csv'
         exportPath = dirPath + "/" + fileName + "_" + datetime.datetime.now().strftime("%Y%m%d_%H%M") + ".csv"
 
         with open(exportPath, "w", newline="") as f:

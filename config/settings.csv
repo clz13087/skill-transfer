@@ -13,13 +13,13 @@ localIPAddress,127.0.0.1
 frameRate,200
 
 isExportData,False
-dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\38
+dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi\3
 participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
-recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\32
+recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi\3
 
-weightListPos,0,0,0,1
-weightListRot,0,0,0,1
+weightListPos,0,1,0,0
+weightListRot,0,1,0,0
