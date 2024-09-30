@@ -204,27 +204,28 @@ class ProcessorClass:
                         taskStartTime = loop_start_time = time.perf_counter()
 
                 if input() == 's':
-                    print("\nKeyboardInterrupt >> Stop: mainloop()")
-
-                    self.taskTime.append(time.perf_counter() - taskStartTime)
-                    self.PrintProcessInfo()
+                    print("\nSend stop to transparent")
 
                     # Mac側にsキーを送信
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(b's', ('133.68.108.26', 8000))
 
-                    if self.isExportData:
-                        dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
-
-                    # ----- Disconnect ----- #
-                    if isEnablexArm:
-                        arm_1.disconnect()
-                        arm_2.disconnect()
-
-                    windll.winmm.timeEndPeriod(1)
 
         except KeyboardInterrupt:
-            print("\nKeyboardInterrupt >> Stop")
+            print("\nKeyboardInterrupt >> Stop: mainloop()")
+
+            self.taskTime.append(time.perf_counter() - taskStartTime)
+            self.PrintProcessInfo()
+
+            if self.isExportData:
+                dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
+
+            # ----- Disconnect ----- #
+            if isEnablexArm:
+                arm_1.disconnect()
+                arm_2.disconnect()
+
+            windll.winmm.timeEndPeriod(1)
 
         except:
             print("----- Exception has occurred -----")
