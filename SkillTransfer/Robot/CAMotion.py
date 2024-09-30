@@ -70,7 +70,8 @@ class CAMotion:
         # ----- change cordinate from motive to xArm (only rotation) ----- #
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())
-        for i in range(4):
+        # なぜかレコードは入れかえをpassするとうごく
+        for i in range(2):
             key = keys_list[i]
             rotation[key] = [rotation[key][j] for j in order]
 

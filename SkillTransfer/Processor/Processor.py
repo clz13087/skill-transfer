@@ -134,13 +134,13 @@ class ProcessorClass:
                     last_index_participant4 = len(participant4_data) - 1
 
                     # self.loopCountがデータの範囲を超えた場合は、最終フレームのデータを使用
-                    relativePosition["participant3"] = participant3_data[min(self.loopCount, last_index_participant3)]["position"]
-                    relativeRotation["participant3"] = participant3_data[min(self.loopCount, last_index_participant3)]["rotation"]
+                    relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, last_index_participant3)]["position"])
+                    relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, last_index_participant3)]["rotation"])
 
-                    relativePosition["participant4"] = participant4_data[min(self.loopCount, last_index_participant4)]["position"]
-                    relativeRotation["participant4"] = participant4_data[min(self.loopCount, last_index_participant4)]["rotation"]
+                    relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, last_index_participant4)]["position"])
+                    relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, last_index_participant4)]["rotation"])
 
-                    print(relativePosition, relativeRotation)
+                    # print(relativePosition, relativeRotation)
 
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
