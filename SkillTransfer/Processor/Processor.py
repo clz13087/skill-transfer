@@ -203,19 +203,16 @@ class ProcessorClass:
                         isMoving = True
                         taskStartTime = loop_start_time = time.perf_counter()
 
-                if input() == 's':
-                    print("\nSend stop to transparent")
-
-                    # Mac側にsキーを送信
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(b's', ('133.68.108.26', 8000))
-
-
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt >> Stop: mainloop()")
 
             self.taskTime.append(time.perf_counter() - taskStartTime)
             self.PrintProcessInfo()
+
+            # Mac側にsキーを送信
+            if self.loopCount > 100:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                    sock.sendto(b's', ('133.68.108.26', 8000))
 
             if self.isExportData:
                 dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
