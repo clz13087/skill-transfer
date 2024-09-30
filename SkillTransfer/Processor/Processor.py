@@ -143,7 +143,7 @@ class ProcessorClass:
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
-                        # arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                        arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Data recording ----- #
@@ -213,6 +213,7 @@ class ProcessorClass:
             if self.loopCount > 100:
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                     sock.sendto(b's', ('133.68.108.26', 8000))
+                    print("Send stop to transparent")
 
             if self.isExportData:
                 dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
