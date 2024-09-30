@@ -6,6 +6,7 @@ import winsound
 import csv
 import os
 import glob
+import socket
 from ctypes import windll
 from datetime import datetime
 from enum import Flag
@@ -188,6 +189,10 @@ class ProcessorClass:
                         time.sleep(2)
                         winsound.Beep(1000,1000)
 
+                        # Mac側にsキーを送信
+                        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                            sock.sendto(b's', ('133.68.108.26', 8000))
+
                         caMotion.SetOriginPosition(participantMotion.LocalPosition())
                         caMotion.SetInversedMatrix(participantMotion.LocalRotation())
 
@@ -199,6 +204,10 @@ class ProcessorClass:
 
             self.taskTime.append(time.perf_counter() - taskStartTime)
             self.PrintProcessInfo()
+
+            # Mac側にsキーを送信
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                sock.sendto(b's', ('133.68.108.26', 8000))
 
             if self.isExportData:
                 dataRecordManager.ExportSelf(dirPath=self.dirPath, participant=self.participantname, conditions=self.condition, number=self.number)
