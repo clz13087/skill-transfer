@@ -21,5 +21,5 @@ robotNum,2
 
 recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\31
 
-weightListPos,1,1,0,0
-weightListRot,1,1,0,0
+weightListPos,0.5,0,0.5,0
+weightListRot,0.5,0,0.5,0
