@@ -141,11 +141,17 @@ class CAMotion:
         return self.posarm, self.rotarm
     
     def participant2robot_yabai(self, position: dict, rotation: dict, weight: list):
+        # ----- numpy array to dict ----- #
+        if type(position) is np.ndarray:
+            position = self.NumpyArray2Dict(position)
+        if type(rotation) is np.ndarray:
+            rotation = self.NumpyArray2Dict(rotation)
+
         # ----- change cordinate from motive to xArm (only rotation) ----- #
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())
         # なぜかレコードは入れかえをpassするとうごく
-        for i in range(4):
+        for i in range(2):
             key = keys_list[i]
             rotation[key] = [rotation[key][j] for j in order]
 
@@ -153,12 +159,6 @@ class CAMotion:
                 rotation[key][1] = -1 * rotation[key][1]
             elif i % 2 == 1:
                 rotation[key][2] = -1 * rotation[key][2]
-
-        # ----- numpy array to dict ----- #
-        if type(position) is np.ndarray:
-            position = self.NumpyArray2Dict(position)
-        if type(rotation) is np.ndarray:
-            rotation = self.NumpyArray2Dict(rotation)
 
         # ----- Shared transform ----- #
         sharedPosition_left = [0, 0, 0]
@@ -200,7 +200,6 @@ class CAMotion:
                                 [-nqy, nqx, nqw, nqz],
                                 [-nqx, -nqy, -nqz, nqw]])
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
-            print(weightedRot)
 
             if i % 2 == 0:
                 sharedRotation_euler_left += self.Quaternion2Euler(weightedRot)

@@ -14,12 +14,12 @@ frameRate,200
 
 isExportData,False
 dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi\11
-participantNum,4
+participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
 recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\31
 
-weightListPos,0,0.5,0,0.5
-weightListRot,0,0.5,0,0.5
+weightListPos,1,1,0,0
+weightListRot,1,1,0,0
