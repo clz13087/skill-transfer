@@ -139,6 +139,81 @@ class CAMotion:
         self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
 
         return self.posarm, self.rotarm
+    
+    def participant2robot_yabai(self, position: dict, rotation: dict, weight: list):
+        # ----- change cordinate from motive to xArm (only rotation) ----- #
+        order = [2, 1, 0, 3]
+        keys_list = list(rotation.keys())
+        # なぜかレコードは入れかえをpassするとうごく
+        for i in range(4):
+            key = keys_list[i]
+            rotation[key] = [rotation[key][j] for j in order]
+
+            if i % 2 == 0:
+                rotation[key][1] = -1 * rotation[key][1]
+            elif i % 2 == 1:
+                rotation[key][2] = -1 * rotation[key][2]
+
+        # ----- numpy array to dict ----- #
+        if type(position) is np.ndarray:
+            position = self.NumpyArray2Dict(position)
+        if type(rotation) is np.ndarray:
+            rotation = self.NumpyArray2Dict(rotation)
+
+        # ----- Shared transform ----- #
+        sharedPosition_left = [0, 0, 0]
+        sharedPosition_right = [0, 0, 0]
+
+        sharedRotation_euler_left = [0, 0, 0]
+        sharedRotation_euler_right = [0, 0, 0]
+
+        for i in range(4):
+            # ----- position ----- #
+            diffPos = np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])
+            weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
+
+            if i % 2 == 0:
+                sharedPosition_left += weightedPos
+            elif i % 2 == 1:
+                sharedPosition_right += weightedPos
+
+            self.weightedPositions["participant" + str(i + 1)] = weightedPos
+            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
+
+            # ----- rotation ----- #
+            qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
+            mat4x4 = np.array([
+                    [qw, qz, -qy, qx],
+                    [-qz, qw, qx, qy],
+                    [qy, -qx, qw, qz],
+                    [-qx, -qy, -qz, qw]])
+            currentRot = rotation["participant" + str(i + 1)]
+            diffRot = np.dot(np.linalg.inv(mat4x4), currentRot)
+            diffRotEuler = self.Quaternion2Euler(np.array(diffRot))
+
+            weightedDiffRotEuler = list(map(lambda x: x * weight[1][i], diffRotEuler))
+            weightedDiffRot = self.Euler2Quaternion(np.array(weightedDiffRotEuler))
+
+            nqw, nqx, nqy, nqz = weightedDiffRot[3], weightedDiffRot[0], weightedDiffRot[1], weightedDiffRot[2]
+            neomat4x4 = np.array([ [nqw, -nqz, nqy, nqx],
+                                [nqz, nqw, -nqx, nqy],
+                                [-nqy, nqx, nqw, nqz],
+                                [-nqx, -nqy, -nqz, nqw]])
+            weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
+            print(weightedRot)
+
+            if i % 2 == 0:
+                sharedRotation_euler_left += self.Quaternion2Euler(weightedRot)
+            elif i % 2 == 1:
+                sharedRotation_euler_right += self.Quaternion2Euler(weightedRot)
+
+            self.weightedRotations["participant" + str(i + 1)] = weightedRot
+            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
+
+        self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
+        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+
+        return self.posarm, self.rotarm
 
     # ----------------------------------------------------------------------------------------------------------------------------------------------
 

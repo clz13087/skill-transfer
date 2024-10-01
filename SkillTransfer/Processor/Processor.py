@@ -142,7 +142,7 @@ class ProcessorClass:
 
                     # print(relativePosition, relativeRotation)
 
-                    robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
@@ -194,7 +194,7 @@ class ProcessorClass:
                         weightList = [weightListPosfloat,weightListRotfloat]
 
                         # ----- A beep sounds after 5 seconds. ----- #
-                        time.sleep(2)
+                        time.sleep(4)
                         # Mac側にsキーを送信
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                             sock.sendto(b's', ('133.68.108.26', 8000))
