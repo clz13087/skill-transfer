@@ -142,7 +142,7 @@ class ProcessorClass:
 
                     # print(relativePosition, relativeRotation)
 
-                    robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
