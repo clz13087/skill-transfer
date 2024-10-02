@@ -129,16 +129,12 @@ class ProcessorClass:
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
-                    # last index
-                    last_index_participant3 = len(participant3_data) - 1
-                    last_index_participant4 = len(participant4_data) - 1
+                    # ----- If self.loopCount exceeds the data range, data from the last frame is used ----- #
+                    relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["position"])
+                    relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["rotation"])
 
-                    # self.loopCountがデータの範囲を超えた場合は、最終フレームのデータを使用
-                    relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, last_index_participant3)]["position"])
-                    relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, last_index_participant3)]["rotation"])
-
-                    relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, last_index_participant4)]["position"])
-                    relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, last_index_participant4)]["rotation"])
+                    relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
+                    relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
                     robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
 
@@ -181,6 +177,7 @@ class ProcessorClass:
                         participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
                         participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
                         participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
+                        
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
@@ -190,7 +187,7 @@ class ProcessorClass:
                         weightListRotfloat = list(map(float, weightListRotstr))
                         weightList = [weightListPosfloat,weightListRotfloat]
 
-                        # ----- A beep sounds after 5 seconds. ----- #
+                        # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
                         time.sleep(5)
                         # Mac側にsキーを送信
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
