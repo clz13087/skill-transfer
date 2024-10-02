@@ -140,9 +140,7 @@ class ProcessorClass:
                     relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, last_index_participant4)]["position"])
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, last_index_participant4)]["rotation"])
 
-                    # print(relativePosition, relativeRotation)
-
-                    robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
@@ -183,7 +181,6 @@ class ProcessorClass:
                         participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
                         participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
                         participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
-
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
@@ -194,7 +191,7 @@ class ProcessorClass:
                         weightList = [weightListPosfloat,weightListRotfloat]
 
                         # ----- A beep sounds after 5 seconds. ----- #
-                        time.sleep(4)
+                        time.sleep(5)
                         # Mac側にsキーを送信
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                             sock.sendto(b's', ('133.68.108.26', 8000))

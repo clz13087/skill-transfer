@@ -164,8 +164,8 @@ class CAMotion:
         sharedPosition_left = [0, 0, 0]
         sharedPosition_right = [0, 0, 0]
 
-        sharedRotation_quaternion_left = [0, 0, 0, 1]
-        sharedRotation_quaternion_right = [0, 0, 0, 1]
+        sharedRotation_quaternion_left = np.array([0, 0, 0, 1])
+        sharedRotation_quaternion_right = np.array([0, 0, 0, 1])
 
         for i in range(4):
             # ----- position ----- #
@@ -202,9 +202,9 @@ class CAMotion:
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
 
             if i % 2 == 0:
-                sharedRotation_quaternion_left = np.dot(weightedRot, sharedRotation_quaternion_left)
+                sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
             elif i % 2 == 1:
-                sharedRotation_quaternion_right = np.dot(weightedRot, sharedRotation_quaternion_right)
+                sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
