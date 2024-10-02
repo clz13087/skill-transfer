@@ -164,8 +164,8 @@ class CAMotion:
         sharedPosition_left = [0, 0, 0]
         sharedPosition_right = [0, 0, 0]
 
-        sharedRotation_euler_left = [0, 0, 0, 1]
-        sharedRotation_euler_right = [0, 0, 0, 1]
+        sharedRotation_quaternion_left = [0, 0, 0, 1]
+        sharedRotation_quaternion_right = [0, 0, 0, 1]
 
         for i in range(4):
             # ----- position ----- #
@@ -202,18 +202,18 @@ class CAMotion:
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
 
             if i % 2 == 0:
-                sharedRotation_euler_left = weightedRot * sharedRotation_euler_left
+                sharedRotation_quaternion_left = weightedRot * sharedRotation_quaternion_left
             elif i % 2 == 1:
-                sharedRotation_euler_right = weightedRot * sharedRotation_euler_right
+                sharedRotation_quaternion_right = weightedRot * sharedRotation_quaternion_right
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
 
-        sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_euler_left)
-        sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_euler_right)
+        sharedRotation_quaternion_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
+        sharedRotation_quaternion_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
-        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+        self.rotarm = dict(robot1=sharedRotation_quaternion_left, robot2=sharedRotation_quaternion_right)
 
         return self.posarm, self.rotarm
 

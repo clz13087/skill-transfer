@@ -46,29 +46,6 @@ class ParticipantMotion:
             streamingThread.setDaemon(True)
             streamingThread.start()
 
-        # ----- Initialize gripper control system ----- #
-        # if gripperInputSystem == "bendingsensor":
-        #     self.bendingSensors = []
-
-        #     if BendingSensor_ConnectionMethod == "wireless":
-        #         self.ip = [bendingSensorUdpIpAddress, bendingSensorUdpIpAddress]
-        #         self.port = bendingSensorUdpPort
-        #     elif BendingSensor_ConnectionMethod == "wired":
-        #         self.ip = bendingSensorSerialCOMs
-        #         self.port = bendingSensorUdpPort
-
-        #     for i in range(bendingSensorNum):
-        #         bendingSensorManager = BendingSensorManager(BendingSensor_connectionmethod=BendingSensor_ConnectionMethod, ip=self.ip[i], port=self.port[i])
-        #         self.bendingSensors.append(bendingSensorManager)
-
-        #         # ----- Start receiving bending sensor value from UDP socket ----- #
-        #         bendingSensorThread = threading.Thread(target=bendingSensorManager.StartReceiving)
-        #         bendingSensorThread.setDaemon(True)
-        #         bendingSensorThread.start()
-
-        #     # ----- Set init value ----- #
-        #     self.SetInitialBendingValue()
-
     def SetInitialBendingValue(self):
         """
         Set init bending value
