@@ -1,5 +1,5 @@
 xArmIPAddress_left,192.168.1.199
-initialpos_left,620,260,-28
+initialpos_left,630,250,-28
 initialrot_left,-90,0,-45
 
 xArmIPAddress_right,192.168.1.196
@@ -21,5 +21,5 @@ robotNum,2
 
 recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi2\8
 
-weightListPos,0,1,0,0
-weightListRot,0,0,0,1
+weightListPos,0.5,0.5,0.5,0.5
+weightListRot,0.5,0.5,0.5,0.5

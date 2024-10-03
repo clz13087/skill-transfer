@@ -217,7 +217,7 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
-    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
+    def  participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
         # ----- numpy array to dict ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
