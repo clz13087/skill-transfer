@@ -788,7 +788,7 @@ class CAMotion:
         ])
         return rotation_matrix
 
-    def weighted_slerp(beforeRot, currentRot, weight):
+    def weighted_slerp(self, beforeRot, currentRot, weight):
         """
         クォータニオンでのSlerpを使用して重み付けした補間を行う。
 
