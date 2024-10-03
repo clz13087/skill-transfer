@@ -16,4 +16,4 @@ weightListRot,0,0.1,0,0.9
 weightListPos,0.2,0.2,0.8,0.8
 weightListRot,0.2,0.2,0.8,0.8
 
-recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\expertdata\31
+recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi\1
