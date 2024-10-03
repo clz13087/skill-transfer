@@ -136,7 +136,7 @@ class ProcessorClass:
                     relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
-                    robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
@@ -177,7 +177,7 @@ class ProcessorClass:
                         participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
                         participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
                         participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
-                        
+
                         # ----- weight slider list ----- #
                         self.weightListPos[0].remove("weightListPos")
                         self.weightListRot[0].remove("weightListRot")
