@@ -217,7 +217,7 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
-    def  participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
+    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
         # ----- numpy array to dict ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
@@ -225,17 +225,17 @@ class CAMotion:
             rotation = self.NumpyArray2Dict(rotation)
 
         # ----- change cordinate from motive to xArm (only rotation) ----- #
-        order = [2, 1, 0, 3]
-        keys_list = list(rotation.keys())
-        # なぜかレコードは入れかえをpassするとうごく
-        for i in range(2):
-            key = keys_list[i]
-            rotation[key] = [rotation[key][j] for j in order]
+        # order = [2, 1, 0, 3]
+        # keys_list = list(rotation.keys())
+        # # なぜかレコードは入れかえをpassするとうごく
+        # for i in range(2):
+        #     key = keys_list[i]
+        #     rotation[key] = [rotation[key][j] for j in order]
 
-            if i % 2 == 0:
-                rotation[key][1] = -1 * rotation[key][1]
-            elif i % 2 == 1:
-                rotation[key][2] = -1 * rotation[key][2]
+        #     if i % 2 == 0:
+        #         rotation[key][1] = -1 * rotation[key][1]
+        #     elif i % 2 == 1:
+        #         rotation[key][2] = -1 * rotation[key][2]
 
         # ----- Shared transform ----- #
         sharedPosition_left = [0, 0, 0]
@@ -275,9 +275,9 @@ class CAMotion:
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
 
             if i % 2 == 0:
-                sharedRotation_quaternion_left = (self.quaternion_to_rotation_matrix(weightedRot) * self.quaternion_to_rotation_matrix(sharedRotation_quaternion_left)).as_quat()
+                sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
             elif i % 2 == 1:
-                sharedRotation_quaternion_right = (self.quaternion_to_rotation_matrix(weightedRot) * self.quaternion_to_rotation_matrix(sharedRotation_quaternion_right)).as_quat()
+                sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
