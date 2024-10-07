@@ -202,9 +202,24 @@ class CAMotion:
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
 
             if i % 2 == 0:
-                sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
+                nnqw, nnqx, nnqy, nnqz = weightedRot[3], weightedRot[0], weightedRot[1], weightedRot[2]
+                nneomat4x4 = np.array([ [nnqw, -nnqz, nnqy, nnqx],
+                                    [nnqz, nnqw, -nnqx, nnqy],
+                                    [-nnqy, nnqx, nnqw, nnqz],
+                                    [-nnqx, -nnqy, -nnqz, nnqw]])
+                sharedRotation_quaternion_left = np.dot(nneomat4x4, sharedRotation_quaternion_left)
             elif i % 2 == 1:
-                sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
+                nnqw, nnqx, nnqy, nnqz = weightedRot[3], weightedRot[0], weightedRot[1], weightedRot[2]
+                nneomat4x4 = np.array([ [nnqw, -nnqz, nnqy, nnqx],
+                                    [nnqz, nnqw, -nnqx, nnqy],
+                                    [-nnqy, nnqx, nnqw, nnqz],
+                                    [-nnqx, -nnqy, -nnqz, nnqw]])
+                sharedRotation_quaternion_right = np.dot(nneomat4x4, sharedRotation_quaternion_right)
+
+            # if i % 2 == 0:
+            #     sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
+            # elif i % 2 == 1:
+            #     sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
@@ -275,9 +290,24 @@ class CAMotion:
             weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
 
             if i % 2 == 0:
-                sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
+                nnqw, nnqx, nnqy, nnqz = weightedRot[3], weightedRot[0], weightedRot[1], weightedRot[2]
+                nneomat4x4 = np.array([ [nnqw, -nnqz, nnqy, nnqx],
+                                    [nnqz, nnqw, -nnqx, nnqy],
+                                    [-nnqy, nnqx, nnqw, nnqz],
+                                    [-nnqx, -nnqy, -nnqz, nnqw]])
+                sharedRotation_quaternion_left = np.dot(nneomat4x4, sharedRotation_quaternion_left)
             elif i % 2 == 1:
-                sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
+                nnqw, nnqx, nnqy, nnqz = weightedRot[3], weightedRot[0], weightedRot[1], weightedRot[2]
+                nneomat4x4 = np.array([ [nnqw, -nnqz, nnqy, nnqx],
+                                    [nnqz, nnqw, -nnqx, nnqy],
+                                    [-nnqy, nnqx, nnqw, nnqz],
+                                    [-nnqx, -nnqy, -nnqz, nnqw]])
+                sharedRotation_quaternion_right = np.dot(nneomat4x4, sharedRotation_quaternion_right)
+
+            # if i % 2 == 0:
+            #     sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
+            # elif i % 2 == 1:
+            #     sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
 
             self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]

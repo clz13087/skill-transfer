@@ -142,9 +142,9 @@ class ProcessorClass:
                     relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
-                    robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
-                    robotpos2, robotrot2 = caMotion.participant2robot_yabai(relativePosition, relativeRotation, [[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5]])
-                    print("pos", {key: robotpos[key]-robotpos2[key] for key in robotpos}, "rot", {key: robotrot[key]-robotrot2[key] for key in robotrot})
+                    robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
+                    robotpos2, robotrot2 = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, [[0,0,1,1], [0,0,1,1]])
+                    print("pos", {key: robotpos[key]-robotpos2[key] for key in robotpos}, "rot", {key: robotrot[key]-robotrot2[key] for key in robotrot})   
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
