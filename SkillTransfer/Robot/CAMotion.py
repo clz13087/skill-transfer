@@ -148,17 +148,17 @@ class CAMotion:
             rotation = self.NumpyArray2Dict(rotation)
 
         # ----- change cordinate from motive to xArm (only rotation) ----- #
-        order = [2, 1, 0, 3]
-        keys_list = list(rotation.keys())
-        # なぜかレコードは入れかえをpassするとうごく
-        for i in range(2):
-            key = keys_list[i]
-            rotation[key] = [rotation[key][j] for j in order]
+        # order = [2, 1, 0, 3]
+        # keys_list = list(rotation.keys())
+        # # なぜかレコードは入れかえをpassするとうごく
+        # for i in range(2):
+        #     key = keys_list[i]
+        #     rotation[key] = [rotation[key][j] for j in order]
 
-            if i % 2 == 0:
-                rotation[key][1] = -1 * rotation[key][1]
-            elif i % 2 == 1:
-                rotation[key][2] = -1 * rotation[key][2]
+        #     if i % 2 == 0:
+        #         rotation[key][1] = -1 * rotation[key][1]
+        #     elif i % 2 == 1:
+        #         rotation[key][2] = -1 * rotation[key][2]
 
         # ----- Shared transform ----- #
         sharedPosition_left = [0, 0, 0]

@@ -130,8 +130,8 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- If self.loopCount exceeds the data range, data from the last frame is used ----- #
-                    # relativePosition["participant2"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
-                    # relativeRotation["participant2"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
+                    relativePosition["participant2"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
+                    relativeRotation["participant2"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
                     relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["position"])
                     relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["rotation"])
@@ -139,7 +139,7 @@ class ProcessorClass:
                     relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
-                    robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
