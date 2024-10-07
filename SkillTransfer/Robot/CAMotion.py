@@ -164,8 +164,8 @@ class CAMotion:
         sharedPosition_left = [0, 0, 0]
         sharedPosition_right = [0, 0, 0]
 
-        sharedRotation_quaternion_left = np.array([0, 0, 0, 1])
-        sharedRotation_quaternion_right = np.array([0, 0, 0, 1])
+        sharedRotation_quaternion_left = [0, 0, 0, 1]
+        sharedRotation_quaternion_right = [0, 0, 0, 1]
 
         for i in range(4):
             # ----- position ----- #

@@ -130,6 +130,9 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- If self.loopCount exceeds the data range, data from the last frame is used ----- #
+                    relativePosition["participant1"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["position"])
+                    relativeRotation["participant1"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["rotation"])
+                    
                     relativePosition["participant2"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
                     relativeRotation["participant2"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
@@ -140,6 +143,8 @@ class ProcessorClass:
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
                     robotpos, robotrot = caMotion.participant2robot_yabai(relativePosition, relativeRotation, weightList)
+                    robotpos2, robotrot2 = caMotion.participant2robot_yabai(relativePosition, relativeRotation, [[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5]])
+                    print("pos", {key: robotpos[key]-robotpos2[key] for key in robotpos}, "rot", {key: robotrot[key]-robotrot2[key] for key in robotrot})
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
@@ -197,8 +202,8 @@ class ProcessorClass:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)
 
-                        caMotion.SetOriginPosition(participantMotion.LocalPosition())
-                        caMotion.SetInversedMatrix(participantMotion.LocalRotation())
+                        # caMotion.SetOriginPosition(participantMotion.LocalPosition())
+                        # caMotion.SetInversedMatrix(participantMotion.LocalRotation())
 
                         isMoving = True
                         taskStartTime = loop_start_time = time.perf_counter()
