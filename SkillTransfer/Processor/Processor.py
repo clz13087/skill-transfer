@@ -110,11 +110,11 @@ class ProcessorClass:
 
         # ----- Initialize robot arm ----- #
         if isEnablexArm:
-            # arm_1 = XArmAPI(self.xArmIpAddress_left)
-            # self.InitializeAll(arm_1, transform_left)
+            arm_1 = XArmAPI(self.xArmIpAddress_left)
+            self.InitializeAll(arm_1, transform_left)
 
-            arm_2 = XArmAPI(self.xArmIpAddress_right)
-            self.InitializeAll(arm_2, transform_right)
+            # arm_2 = XArmAPI(self.xArmIpAddress_right)
+            # self.InitializeAll(arm_2, transform_right)
 
         # ----- Control flags ----- #
         isMoving = False
@@ -142,14 +142,14 @@ class ProcessorClass:
                     relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
-                    robotpos, robotrot = caMotion.participant2robot_little_quaternion(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
                     pos2, rot2 = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, [[0,0,1,1], [0,0,1,1]])
                     print("pos", {key: robotpos[key]-pos2[key] for key in robotpos}, "rot", {key: robotrot[key]-rot2[key] for key in robotrot})   
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
-                        # arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                        # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
