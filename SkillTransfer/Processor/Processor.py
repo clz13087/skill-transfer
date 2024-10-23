@@ -113,8 +113,8 @@ class ProcessorClass:
             arm_1 = XArmAPI(self.xArmIpAddress_left)
             self.InitializeAll(arm_1, transform_left)
 
-            # arm_2 = XArmAPI(self.xArmIpAddress_right)
-            # self.InitializeAll(arm_2, transform_right)
+            arm_2 = XArmAPI(self.xArmIpAddress_right)
+            self.InitializeAll(arm_2, transform_right)
 
         # ----- Control flags ----- #
         isMoving = False
@@ -143,15 +143,11 @@ class ProcessorClass:
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion_new(relativePosition, relativeRotation, weightList)
-                    pos2, rot2 = caMotion.participant2robot_all_quaternion_new(relativePosition, relativeRotation, [[0,0,1,0], [0,0,1,0]])
-                    print("pos", {key: robotpos[key]-pos2[key] for key in robotpos}, "rot", {key: robotrot[key]-rot2[key] for key in robotrot})
-                    print(robotrot["robot1"]-rot2["robot1"])
-                    print(robotrot["robot1"])
-
+                
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        # arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
@@ -167,7 +163,7 @@ class ProcessorClass:
                     # ----- Quit program ----- #
                     if keycode == "q":
                         if isEnablexArm:
-                            # arm_1.disconnect()
+                            arm_1.disconnect()
                             arm_2.disconnect()
                         self.PrintProcessInfo()
 
@@ -177,7 +173,7 @@ class ProcessorClass:
                     # ----- Reset xArm and gripper ----- #
                     elif keycode == "r":
                         if isEnablexArm:
-                            # self.InitializeAll(arm_1, transform_left)
+                            self.InitializeAll(arm_1, transform_left)
                             self.InitializeAll(arm_2, transform_right)
 
                     # ----- Start streaming ----- #
@@ -204,8 +200,8 @@ class ProcessorClass:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)
 
-                        # caMotion.SetOriginPosition(participantMotion.LocalPosition())
-                        # caMotion.SetInversedMatrix(participantMotion.LocalRotation())
+                        caMotion.SetOriginPosition(participantMotion.LocalPosition())
+                        caMotion.SetInversedMatrix(participantMotion.LocalRotation())
 
                         isMoving = True
                         taskStartTime = loop_start_time = time.perf_counter()

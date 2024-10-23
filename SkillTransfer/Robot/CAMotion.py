@@ -169,9 +169,6 @@ class CAMotion:
         sharedPosition_left = [0, 0, 0]
         sharedPosition_right = [0, 0, 0]
 
-        sharedRotation_quaternion_left = [0, 0, 0, 1]
-        sharedRotation_quaternion_right = [0, 0, 0, 1]
-
         for i in range(4):
             # ----- position ----- #
             diffPos = np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])
@@ -197,13 +194,13 @@ class CAMotion:
 
             if i % 2 == 0:
                 sharedRotation_quaternion_left = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot1"])).as_quat()
+                self.beforeRotationsRobot["robot1"] = sharedRotation_quaternion_left
             elif i % 2 == 1:
                 sharedRotation_quaternion_right = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot2"])).as_quat()
+                self.beforeRotationsRobot["robot2"] = sharedRotation_quaternion_right
 
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
-            self.beforeRotationsRobot["robot1"] = sharedRotation_quaternion_left
-            self.beforeRotationsRobot["robot2"] = sharedRotation_quaternion_right
-
+            
         sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
         sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
 
@@ -220,17 +217,17 @@ class CAMotion:
             rotation = self.NumpyArray2Dict(rotation)
 
         # ----- change cordinate from motive to xArm (only rotation) ----- #
-        # order = [2, 1, 0, 3]
-        # keys_list = list(rotation.keys())
-        # # なぜかレコードは入れかえをpassするとうごく
-        # for i in range(2):
-        #     key = keys_list[i]
-        #     rotation[key] = [rotation[key][j] for j in order]
+        order = [2, 1, 0, 3]
+        keys_list = list(rotation.keys())
+        # なぜかレコードは入れかえをpassするとうごく
+        for i in range(2):
+            key = keys_list[i]
+            rotation[key] = [rotation[key][j] for j in order]
 
-        #     if i % 2 == 0:
-        #         rotation[key][1] = -1 * rotation[key][1]
-        #     elif i % 2 == 1:
-        #         rotation[key][2] = -1 * rotation[key][2]
+            if i % 2 == 0:
+                rotation[key][1] = -1 * rotation[key][1]
+            elif i % 2 == 1:
+                rotation[key][2] = -1 * rotation[key][2]
 
         # ----- Shared transform ----- #
         sharedPosition_left = [0, 0, 0]
