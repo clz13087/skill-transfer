@@ -30,6 +30,8 @@ class CAMotion:
     beforeRotations = {}
     weightedRotations = {}
 
+    beforeRotationsRobot = {}
+
     def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int) -> None:
         for i in range(4):
             self.originPositions["participant" + str(i + 1)] = np.zeros(3)
@@ -41,6 +43,9 @@ class CAMotion:
 
             self.beforeRotations["participant" + str(i + 1)] = np.array([0, 0, 0, 1])
             self.weightedRotations["participant" + str(i + 1)] = np.array([0, 0, 0, 1])
+        
+        for i in range(2):
+            self.beforeRotationsRobot["robot" + str(i + 1)] = np.array([0, 0, 0, 1])
 
         for i in range(otherRigidBodyNum):
             self.originPositions["otherRigidBody" + str(i + 1)] = np.zeros(3)
@@ -140,7 +145,7 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
-    def participant2robot_little_quaternion(self, position: dict, rotation: dict, weight: list):
+    def participant2robot_all_quaternion_new(self, position: dict, rotation: dict, weight: list):
         # ----- numpy array to dict ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
@@ -181,34 +186,24 @@ class CAMotion:
             self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
 
             # ----- rotation ----- #
+            slerpRot = self.weighted_slerp(self.beforeRotations["participant" + str(i + 1)], rotation["participant" + str(i + 1)], weight[1][i])
             qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
             mat4x4 = np.array([
                     [qw, qz, -qy, qx],
                     [-qz, qw, qx, qy],
                     [qy, -qx, qw, qz],
                     [-qx, -qy, -qz, qw]])
-            currentRot = rotation["participant" + str(i + 1)]
-            diffRot = np.dot(np.linalg.inv(mat4x4), currentRot)
-            diffRotEuler = self.Quaternion2Euler(np.array(diffRot))
-
-            weightedDiffRotEuler = list(map(lambda x: x * weight[1][i], diffRotEuler))
-            weightedDiffRot = self.Euler2Quaternion(np.array(weightedDiffRotEuler))
-
-            nqw, nqx, nqy, nqz = weightedDiffRot[3], weightedDiffRot[0], weightedDiffRot[1], weightedDiffRot[2]
-            neomat4x4 = np.array([ [nqw, -nqz, nqy, nqx],
-                                [nqz, nqw, -nqx, nqy],
-                                [-nqy, nqx, nqw, nqz],
-                                [-nqx, -nqy, -nqz, nqw]])
-            weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
+            weightedDiffRot = np.dot(np.linalg.inv(mat4x4), slerpRot)
 
             if i % 2 == 0:
-                sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
+                sharedRotation_quaternion_left = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot1"])).as_quat()
             elif i % 2 == 1:
-                sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
+                sharedRotation_quaternion_right = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot2"])).as_quat()
 
-            self.weightedRotations["participant" + str(i + 1)] = weightedRot
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
-        
+            self.beforeRotationsRobot["robot1"] = sharedRotation_quaternion_left
+            self.beforeRotationsRobot["robot2"] = sharedRotation_quaternion_right
+
         sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
         sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
 
