@@ -185,13 +185,9 @@ class ProcessorClass:
                         participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
 
                         # ----- weight slider list ----- #
-                        self.weightListPos[0].remove("weightListPos")
-                        self.weightListRot[0].remove("weightListRot")
-                        weightListPosstr = self.weightListPos[0]
-                        weightListRotstr = self.weightListRot[0]
-                        weightListPosfloat = list(map(float, weightListPosstr))
-                        weightListRotfloat = list(map(float, weightListRotstr))
-                        weightList = [weightListPosfloat,weightListRotfloat]
+                        weightListPosfloat = list(map(float, self.weightListPos[1:]))
+                        weightListRotfloat = list(map(float, self.weightListRot[1:]))
+                        weightList = [weightListPosfloat, weightListRotfloat]
 
                         # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
                         time.sleep(5)
