@@ -143,8 +143,10 @@ class ProcessorClass:
                     relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
 
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
-                    pos2, rot2 = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, [[0,0,1,1], [0,0,1,1]])
-                    print("pos", {key: robotpos[key]-pos2[key] for key in robotpos}, "rot", {key: robotrot[key]-rot2[key] for key in robotrot})   
+                    pos2, rot2 = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, [[0,0,1,0], [0,0,1,0]])
+                    print("pos", {key: robotpos[key]-pos2[key] for key in robotpos}, "rot", {key: robotrot[key]-rot2[key] for key in robotrot})
+                    print(robotrot["robot1"]-rot2["robot1"])
+                    print(robotrot["robot1"])
 
                     if isEnablexArm:
                         # ----- Send to xArm ----- #
