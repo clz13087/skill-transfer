@@ -145,7 +145,7 @@ class CAMotion:
 
         return self.posarm, self.rotarm
 
-    def participant2robot_all_quaternion_new(self, position: dict, rotation: dict, weight: list):
+    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
         # ----- numpy array to dict ----- #
         if type(position) is np.ndarray:
             position = self.NumpyArray2Dict(position)
@@ -153,17 +153,17 @@ class CAMotion:
             rotation = self.NumpyArray2Dict(rotation)
 
         # ----- change cordinate from motive to xArm (only rotation) ----- #
-        # order = [2, 1, 0, 3]
-        # keys_list = list(rotation.keys())
-        # # なぜかレコードは入れかえをpassするとうごく
-        # for i in range(2):
-        #     key = keys_list[i]
-        #     rotation[key] = [rotation[key][j] for j in order]
+        order = [2, 1, 0, 3]
+        keys_list = list(rotation.keys())
+        # なぜかレコードは入れかえをpassするとうごく
+        for i in range(2):
+            key = keys_list[i]
+            rotation[key] = [rotation[key][j] for j in order]
 
-        #     if i % 2 == 0:
-        #         rotation[key][1] = -1 * rotation[key][1]
-        #     elif i % 2 == 1:
-        #         rotation[key][2] = -1 * rotation[key][2]
+            if i % 2 == 0:
+                rotation[key][1] = -1 * rotation[key][1]
+            elif i % 2 == 1:
+                rotation[key][2] = -1 * rotation[key][2]
 
         # ----- Shared transform ----- #
         sharedPosition_left = [0, 0, 0]
@@ -201,79 +201,6 @@ class CAMotion:
 
             self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
             
-        sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
-        sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
-
-        self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
-        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
-
-        return self.posarm, self.rotarm
-
-    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
-        # ----- numpy array to dict ----- #
-        if type(position) is np.ndarray:
-            position = self.NumpyArray2Dict(position)
-        if type(rotation) is np.ndarray:
-            rotation = self.NumpyArray2Dict(rotation)
-
-        # ----- change cordinate from motive to xArm (only rotation) ----- #
-        order = [2, 1, 0, 3]
-        keys_list = list(rotation.keys())
-        # なぜかレコードは入れかえをpassするとうごく
-        for i in range(2):
-            key = keys_list[i]
-            rotation[key] = [rotation[key][j] for j in order]
-
-            if i % 2 == 0:
-                rotation[key][1] = -1 * rotation[key][1]
-            elif i % 2 == 1:
-                rotation[key][2] = -1 * rotation[key][2]
-
-        # ----- Shared transform ----- #
-        sharedPosition_left = [0, 0, 0]
-        sharedPosition_right = [0, 0, 0]
-
-        sharedRotation_quaternion_left = [0, 0, 0, 1]
-        sharedRotation_quaternion_right = [0, 0, 0, 1]
-
-        for i in range(4):
-            # ----- position ----- #
-            diffPos = np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])
-            weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
-
-            if i % 2 == 0:
-                sharedPosition_left += weightedPos
-            elif i % 2 == 1:
-                sharedPosition_right += weightedPos
-
-            self.weightedPositions["participant" + str(i + 1)] = weightedPos
-            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
-
-            # ----- rotation ----- #
-            slerpRot = self.weighted_slerp(self.beforeRotations["participant" + str(i + 1)], rotation["participant" + str(i + 1)], weight[1][i])
-            qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
-            mat4x4 = np.array([
-                    [qw, qz, -qy, qx],
-                    [-qz, qw, qx, qy],
-                    [qy, -qx, qw, qz],
-                    [-qx, -qy, -qz, qw]])
-            weightedDiffRot = np.dot(np.linalg.inv(mat4x4), slerpRot)
-
-            nqw, nqx, nqy, nqz = weightedDiffRot[3], weightedDiffRot[0], weightedDiffRot[1], weightedDiffRot[2]
-            neomat4x4 = np.array([ [nqw, -nqz, nqy, nqx],
-                                [nqz, nqw, -nqx, nqy],
-                                [-nqy, nqx, nqw, nqz],
-                                [-nqx, -nqy, -nqz, nqw]])
-            weightedRot = np.dot(neomat4x4, self.weightedRotations["participant" + str(i + 1)])
-
-            if i % 2 == 0:
-                sharedRotation_quaternion_left = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_left)).as_quat()
-            elif i % 2 == 1:
-                sharedRotation_quaternion_right = (R.from_quat(weightedRot) * R.from_quat(sharedRotation_quaternion_right)).as_quat()
-
-            self.weightedRotations["participant" + str(i + 1)] = weightedRot
-            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
-
         sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
         sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
 
