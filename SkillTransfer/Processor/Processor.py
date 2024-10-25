@@ -186,9 +186,11 @@ class ProcessorClass:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)
 
+                        # ----- set initial pos and rot ----- #
                         caMotion.SetOriginPosition(participantMotion.LocalPosition())
                         caMotion.SetInversedMatrix(participantMotion.LocalRotation())
 
+                        # ----- flag and tasktime ----- #
                         isMoving = True
                         taskStartTime = loop_start_time = time.perf_counter()
 
