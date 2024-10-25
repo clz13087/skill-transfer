@@ -146,12 +146,6 @@ class CAMotion:
         return self.posarm, self.rotarm
 
     def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
-        # ----- numpy array to dict ----- #
-        if type(position) is np.ndarray:
-            position = self.NumpyArray2Dict(position)
-        if type(rotation) is np.ndarray:
-            rotation = self.NumpyArray2Dict(rotation)
-
         # ----- change cordinate from motive to xArm (only rotation) ----- #
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())

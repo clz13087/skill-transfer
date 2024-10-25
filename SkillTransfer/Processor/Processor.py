@@ -109,10 +109,6 @@ class ProcessorClass:
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
 
         # ----- Load recorded data. ----- #
-        # participant3_path = os.path.join(self.recordedDataPath, "*Transform_Participant_1*.csv")
-        # participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
-        # participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
-        # participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
         for i in [3, 4]:
             participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
             globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
@@ -139,23 +135,19 @@ class ProcessorClass:
                     # ----- Get relative----- #
                     localPosition = participantMotion.LocalPosition(loopCount=self.loopCount)
                     localRotation = participantMotion.LocalRotation(loopCount=self.loopCount)
-                    
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- If self.loopCount exceeds the data range, data from the last frame is used ----- #
-                    # relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["position"])
-                    # relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["rotation"])
-                    # relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
-                    # relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
                     for i in [3, 4]:
-                        relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(locals()[f"participant{i}_data"]) - 1)]["position"])
-                        relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(locals()[f"participant{i}_data"]) - 1)]["rotation"])
+                        relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
+                        relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
+                    # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
                 
+                    # ----- Send to xArm ----- #
                     if isEnablexArm:
-                        # ----- Send to xArm ----- #
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
@@ -190,7 +182,6 @@ class ProcessorClass:
                     elif keycode == "s":
                         # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
                         time.sleep(5)
-                        # Mac側にsキーを送信
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)
