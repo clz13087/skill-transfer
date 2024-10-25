@@ -146,13 +146,23 @@ class CAMotion:
         return self.posarm, self.rotarm
 
     def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
-        # ----- change cordinate from motive to xArm (only rotation) ----- #
-        order = [2, 1, 0, 3]
-        keys_list = list(rotation.keys())
-        # なぜかレコードは入れかえをpassするとうごく
-        for i in range(2):
+        # ----- change cordinate from motive to xArm ----- #
+        order_pos = [2, 1, 0]
+        keys_list = list(position.keys())
+        for i in range(4):
             key = keys_list[i]
-            rotation[key] = [rotation[key][j] for j in order]
+            position[key] = [position[key][j] for j in order_pos]
+
+            if i % 2 == 0:
+                position[key][1] = -1 * position[key][1]
+            elif i % 2 == 1:
+                position[key][2] = -1 * position[key][2]
+
+        order_rot = [2, 1, 0, 3]
+        keys_list = list(rotation.keys())
+        for i in range(2):# なぜかレコードは入れかえをpassするとうごくため、2にしてある
+            key = keys_list[i]
+            rotation[key] = [rotation[key][j] for j in order_rot]
 
             if i % 2 == 0:
                 rotation[key][1] = -1 * rotation[key][1]

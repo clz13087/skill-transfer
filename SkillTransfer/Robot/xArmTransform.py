@@ -21,7 +21,7 @@ class xArmTransform:
     __maxX, __maxY, __maxZ = 9999, 9999, 9999
     __maxRoll, __maxPitch, __maxYaw = 9999, 9999, 9999
 
-    def __init__(self, initpos: list, initrot: list, mount: str):
+    def __init__(self, initpos: list, initrot: list):
         self.n = 4
         self.fp = 40
         self.fs = 180
@@ -33,7 +33,6 @@ class xArmTransform:
 
         self.__initX, self.__initY, self.__initZ = int(initpos[0][1]), int(initpos[0][2]), int(initpos[0][3])
         self.__initRoll, self.__initPitch, self.__initYaw = int(initrot[0][1]), int(initrot[0][2]), int(initrot[0][3])
-        self.mount = mount
 
     def GetInitialTransform(self):
         """
@@ -48,18 +47,8 @@ class xArmTransform:
         """
 
         relativepos_mm = relativepos * 1000
-
-        if self.mount == "left":
-            x, y, z = relativepos_mm[2] + self.__initX, -1 * relativepos_mm[1] + self.__initY, relativepos_mm[0] + self.__initZ
-            roll, pitch, yaw = relativerot[0] + self.__initRoll, relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw
-
-        elif self.mount == "right":
-            x, y, z = relativepos_mm[2] + self.__initX, relativepos_mm[1] + self.__initY, -1 * relativepos_mm[0] + self.__initZ
-            roll, pitch, yaw = relativerot[0] + self.__initRoll, relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw
-
-        elif self.mount == "flat":
-            x, y, z = relativepos_mm[2] + self.__initX, relativepos_mm[0] + self.__initY, relativepos_mm[1] + self.__initZ
-            roll, pitch, yaw = relativerot[2] + self.__initRoll, relativerot[0] + self.__initPitch, relativerot[1] + self.__initYaw
+        x, y, z = relativepos_mm[0] + self.__initX, relativepos_mm[1] + self.__initY, relativepos_mm[2] + self.__initZ
+        roll, pitch, yaw = relativerot[0] + self.__initRoll, relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw
 
         if isOnlyPosition:
             roll, pitch, yaw = self.__initRoll, self.__initPitch, self.__initYaw
@@ -109,17 +98,8 @@ class xArmTransform:
         del self.beforefilt[0]
         del self.afterfilt[0]
 
-        if self.mount == "left":
-            x, y, z = self.robotfilt[2] + self.__initX, -1 * self.robotfilt[1] + self.__initY, self.robotfilt[0] + self.__initZ
-            roll, pitch, yaw = self.robotfilt[5] + self.__initRoll, -1 * self.robotfilt[4] + self.__initPitch, self.robotfilt[3] + self.__initYaw
-
-        elif self.mount == "right":
-            x, y, z = self.robotfilt[2] + self.__initX, self.robotfilt[1] + self.__initY, -1 * self.robotfilt[0] + self.__initZ
-            roll, pitch, yaw = self.robotfilt[5] + self.__initRoll, self.robotfilt[4] + self.__initPitch, -1 * self.robotfilt[3] + self.__initYaw
-
-        elif self.mount == "flat":
-            x, y, z = self.robotfilt[2] + self.__initX, self.robotfilt[0] + self.__initY, self.robotfilt[1] + self.__initZ
-            roll, pitch, yaw = self.robotfilt[5] + self.__initRoll, self.robotfilt[3] + self.__initPitch, self.robotfilt[4] + self.__initYaw
+        x, y, z = relativepos_mm[0] + self.__initX, relativepos_mm[1] + self.__initY, relativepos_mm[2] + self.__initZ
+        roll, pitch, yaw = relativerot[0] + self.__initRoll, relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw
 
         if isOnlyPosition:
             roll, pitch, yaw = self.__initRoll, self.__initPitch, self.__initYaw

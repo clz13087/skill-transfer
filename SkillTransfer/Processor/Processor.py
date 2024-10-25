@@ -103,8 +103,8 @@ class ProcessorClass:
 
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum)
-        transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, mount="left")
-        transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, mount="right")
+        transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
+        transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
 
