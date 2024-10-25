@@ -108,6 +108,20 @@ class ProcessorClass:
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
 
+        # ----- Load recorded data. ----- #
+        # participant3_path = os.path.join(self.recordedDataPath, "*Transform_Participant_1*.csv")
+        # participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
+        # participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
+        # participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
+        for i in [3, 4]:
+            participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
+            globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
+
+        # ----- weight list ----- #
+        weightListPosfloat = list(map(float, self.weightListPos[0][1:]))
+        weightListRotfloat = list(map(float, self.weightListRot[0][1:]))
+        weightList = [weightListPosfloat, weightListRotfloat]
+
         # ----- Initialize robot arm ----- #
         if isEnablexArm:
             arm_1 = XArmAPI(self.xArmIpAddress_left)
@@ -130,10 +144,13 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- If self.loopCount exceeds the data range, data from the last frame is used ----- #
-                    relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["position"])
-                    relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["rotation"])
-                    relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
-                    relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
+                    # relativePosition["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["position"])
+                    # relativeRotation["participant3"] = np.array(participant3_data[min(self.loopCount, len(participant3_data) - 1)]["rotation"])
+                    # relativePosition["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["position"])
+                    # relativeRotation["participant4"] = np.array(participant4_data[min(self.loopCount, len(participant4_data) - 1)]["rotation"])
+                    for i in [3, 4]:
+                        relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(locals()[f"participant{i}_data"]) - 1)]["position"])
+                        relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(locals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
                 
@@ -171,17 +188,6 @@ class ProcessorClass:
 
                     # ----- Start streaming ----- #
                     elif keycode == "s":
-                        # ----- Load recorded data. ----- #
-                        participant3_path = os.path.join(self.recordedDataPath, "*Transform_Participant_1*.csv")
-                        participant4_path = os.path.join(self.recordedDataPath, "*Transform_Participant_2*.csv")
-                        participant3_data = self.load_csv_data(glob.glob(participant3_path)[0])
-                        participant4_data = self.load_csv_data(glob.glob(participant4_path)[0])
-
-                        # ----- weight list ----- #
-                        weightListPosfloat = list(map(float, self.weightListPos[0][1:]))
-                        weightListRotfloat = list(map(float, self.weightListRot[0][1:]))
-                        weightList = [weightListPosfloat, weightListRotfloat]
-
                         # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
                         time.sleep(5)
                         # Mac側にsキーを送信
