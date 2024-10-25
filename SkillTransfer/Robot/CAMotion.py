@@ -71,7 +71,60 @@ class CAMotion:
         self.get_rot_2_box = [[0]] * n
         self.get_rot_2_filt_box = [[0]] * n
 
-    def participant2robot(self, position: dict, rotation: dict, weight: list):
+    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
+        # ----- change cordinate from motive to xArm ----- #
+        order_pos = [2, 1, 0]
+        order_rot = [2, 1, 0, 3]
+        self.reorder_and_negate(position, order_pos, 4, [1, 2])
+        self.reorder_and_negate(rotation, order_rot, 2, [1, 2])
+
+        # ----- Shared transform ----- #
+        sharedPosition_left = [0, 0, 0]
+        sharedPosition_right = [0, 0, 0]
+
+        for i in range(4):
+            # ----- position ----- #
+            diffPos = np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])
+            weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
+
+            if i % 2 == 0:
+                sharedPosition_left += weightedPos
+            elif i % 2 == 1:
+                sharedPosition_right += weightedPos
+
+            self.weightedPositions["participant" + str(i + 1)] = weightedPos
+            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
+
+            # ----- rotation ----- #
+            slerpRot = self.weighted_slerp(self.beforeRotations["participant" + str(i + 1)], rotation["participant" + str(i + 1)], weight[1][i])
+            qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
+            mat4x4 = np.array([
+                    [qw, qz, -qy, qx],
+                    [-qz, qw, qx, qy],
+                    [qy, -qx, qw, qz],
+                    [-qx, -qy, -qz, qw]])
+            weightedDiffRot = np.dot(np.linalg.inv(mat4x4), slerpRot)
+
+            if i % 2 == 0:
+                sharedRotation_quaternion_left = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot1"])).as_quat()
+                self.beforeRotationsRobot["robot1"] = sharedRotation_quaternion_left
+            elif i % 2 == 1:
+                sharedRotation_quaternion_right = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot2"])).as_quat()
+                self.beforeRotationsRobot["robot2"] = sharedRotation_quaternion_right
+
+            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
+            
+        sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
+        sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
+
+        self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
+        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+
+        return self.posarm, self.rotarm
+
+    # ----------------------------------------------------------------------------------------------------------------------------------------------
+
+    def participant2robot_old(self, position: dict, rotation: dict, weight: list):
         # ----- change cordinate from motive to xArm (only rotation) ----- #
         order = [2, 1, 0, 3]
         keys_list = list(rotation.keys())
@@ -144,76 +197,6 @@ class CAMotion:
         self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
 
         return self.posarm, self.rotarm
-
-    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
-        # ----- change cordinate from motive to xArm ----- #
-        order_pos = [2, 1, 0]
-        keys_list = list(position.keys())
-        for i in range(4):
-            key = keys_list[i]
-            position[key] = [position[key][j] for j in order_pos]
-
-            if i % 2 == 0:
-                position[key][1] = -1 * position[key][1]
-            elif i % 2 == 1:
-                position[key][2] = -1 * position[key][2]
-
-        order_rot = [2, 1, 0, 3]
-        keys_list = list(rotation.keys())
-        for i in range(2):# なぜかレコードは入れかえをpassするとうごくため、2にしてある
-            key = keys_list[i]
-            rotation[key] = [rotation[key][j] for j in order_rot]
-
-            if i % 2 == 0:
-                rotation[key][1] = -1 * rotation[key][1]
-            elif i % 2 == 1:
-                rotation[key][2] = -1 * rotation[key][2]
-
-        # ----- Shared transform ----- #
-        sharedPosition_left = [0, 0, 0]
-        sharedPosition_right = [0, 0, 0]
-
-        for i in range(4):
-            # ----- position ----- #
-            diffPos = np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])
-            weightedPos = diffPos * weight[0][i] + self.weightedPositions["participant" + str(i + 1)]
-
-            if i % 2 == 0:
-                sharedPosition_left += weightedPos
-            elif i % 2 == 1:
-                sharedPosition_right += weightedPos
-
-            self.weightedPositions["participant" + str(i + 1)] = weightedPos
-            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
-
-            # ----- rotation ----- #
-            slerpRot = self.weighted_slerp(self.beforeRotations["participant" + str(i + 1)], rotation["participant" + str(i + 1)], weight[1][i])
-            qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
-            mat4x4 = np.array([
-                    [qw, qz, -qy, qx],
-                    [-qz, qw, qx, qy],
-                    [qy, -qx, qw, qz],
-                    [-qx, -qy, -qz, qw]])
-            weightedDiffRot = np.dot(np.linalg.inv(mat4x4), slerpRot)
-
-            if i % 2 == 0:
-                sharedRotation_quaternion_left = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot1"])).as_quat()
-                self.beforeRotationsRobot["robot1"] = sharedRotation_quaternion_left
-            elif i % 2 == 1:
-                sharedRotation_quaternion_right = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot2"])).as_quat()
-                self.beforeRotationsRobot["robot2"] = sharedRotation_quaternion_right
-
-            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
-            
-        sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
-        sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
-
-        self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
-        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
-
-        return self.posarm, self.rotarm
-
-    # ----------------------------------------------------------------------------------------------------------------------------------------------
 
     def SetOriginPosition(self, position) -> None:
         """
@@ -732,3 +715,12 @@ class CAMotion:
         weightedRot = slerp([weight]).as_quat()[0]
         
         return weightedRot
+
+    def reorder_and_negate(self, data, order, n_keys, negate_idx):
+        keys_list = list(data.keys())
+        for i in range(n_keys):
+            key = keys_list[i]
+            data[key] = [data[key][j] for j in order]
+            
+            # Apply negation based on i (even/odd)
+            data[key][negate_idx[i % 2]] = -1 * data[key][negate_idx[i % 2]]
