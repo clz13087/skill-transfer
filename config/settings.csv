@@ -1,5 +1,5 @@
 xArmIPAddress_left,192.168.1.199
-initialpos_left,625,250,-10
+initialpos_left,635,250,-10
 initialrot_left,-90,0,-40
 
 xArmIPAddress_right,192.168.1.196
@@ -7,7 +7,7 @@ initialpos_right,635,-260,-40
 initialrot_right,90,0,40
 
 motiveServerIPAddress,133.68.108.111
-motiveLocalIPAddress,133.68.108.77
+motiveLocalIPAddress,133.68.108.66
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
 frameRate,165
@@ -19,7 +19,7 @@ gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 
-recordedDataPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi2\5
+recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\8
 
 weightListPos,0,0,1,1
 weightListRot,0,0,1,1
