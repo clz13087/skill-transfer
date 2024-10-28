@@ -1,4 +1,5 @@
 @REM This file is UTF-8 encoded, so we need to update the current code page while executing it
+@echo off
 @for /f "tokens=2 delims=:." %%a in ('"%SystemRoot%\System32\chcp.com"') do (
     @set _OLD_CODEPAGE=%%a
 )
@@ -6,7 +7,7 @@
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-@set "VIRTUAL_ENV=C:\Users\hapticslab\Documents\GitHub\skill-transfer\.venv"
+@set "VIRTUAL_ENV=C:\Users\SANOLAB\Documents\GitHub\skill-transfer\.venv"
 
 @set "VIRTUAL_ENV_PROMPT=skill-transfer-py3.12"
 @if NOT DEFINED VIRTUAL_ENV_PROMPT (

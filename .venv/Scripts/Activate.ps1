@@ -37,8 +37,8 @@ deactivate -nondestructive
 $VIRTUAL_ENV = $BASE_DIR
 $env:VIRTUAL_ENV = $VIRTUAL_ENV
 
-if ("skill-transfer-py3.12" -ne "") {
-    $env:VIRTUAL_ENV_PROMPT = "skill-transfer-py3.12"
+if ('skill-transfer-py3.12' -ne "") {
+    $env:VIRTUAL_ENV_PROMPT = 'skill-transfer-py3.12'
 }
 else {
     $env:VIRTUAL_ENV_PROMPT = $( Split-Path $env:VIRTUAL_ENV -Leaf )
@@ -46,7 +46,7 @@ else {
 
 New-Variable -Scope global -Name _OLD_VIRTUAL_PATH -Value $env:PATH
 
-$env:PATH = "$env:VIRTUAL_ENV/Scripts;" + $env:PATH
+$env:PATH = "$env:VIRTUAL_ENV/" + 'Scripts' + ';' + $env:PATH
 if (!$env:VIRTUAL_ENV_DISABLE_PROMPT) {
     function global:_old_virtual_prompt {
         ""

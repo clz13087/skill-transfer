@@ -45,18 +45,18 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV='C:\Users\hapticslab\Documents\GitHub\skill-transfer\.venv'
+VIRTUAL_ENV='C:\Users\SANOLAB\Documents\GitHub\skill-transfer\.venv'
 if ([ "$OSTYPE" = "cygwin" ] || [ "$OSTYPE" = "msys" ]) && $(command -v cygpath &> /dev/null) ; then
     VIRTUAL_ENV=$(cygpath -u "$VIRTUAL_ENV")
 fi
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
-PATH="$VIRTUAL_ENV/Scripts:$PATH"
+PATH="$VIRTUAL_ENV/"Scripts":$PATH"
 export PATH
 
-if [ "xskill-transfer-py3.12" != x ] ; then
-    VIRTUAL_ENV_PROMPT="skill-transfer-py3.12"
+if [ "x"skill-transfer-py3.12 != x ] ; then
+    VIRTUAL_ENV_PROMPT=skill-transfer-py3.12
 else
     VIRTUAL_ENV_PROMPT=$(basename "$VIRTUAL_ENV")
 fi
