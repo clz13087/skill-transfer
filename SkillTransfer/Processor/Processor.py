@@ -211,7 +211,7 @@ class ProcessorClass:
 
             # ----- Disconnect ----- #
             if isEnablexArm:
-                # arm_1.disconnect()
+                arm_1.disconnect()
                 arm_2.disconnect()
 
             windll.winmm.timeEndPeriod(1)
