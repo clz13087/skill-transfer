@@ -57,6 +57,7 @@ class ProcessorClass:
         gripperNum = [addr for addr in dat if "gripperNum" in addr[0]][0][1]
         otherRigidBodyNum = [addr for addr in dat if "otherRigidBodyNum" in addr[0]][0][1]
         robotNum = [addr for addr in dat if "robotNum" in addr[0]][0][1]
+        idList = [addr for addr in dat if "idList" in addr[0]]
 
         recordedDataPath = [addr for addr in dat if "recordedDataPath" in addr[0]][0][1]
 
@@ -84,6 +85,7 @@ class ProcessorClass:
         self.gripperNum = int(gripperNum)
         self.otherRigidBodyNum = int(otherRigidBodyNum)
         self.robotNum = int(robotNum)
+        self.idList = idList
 
         self.recordedDataPath = recordedDataPath
 
@@ -106,7 +108,7 @@ class ProcessorClass:
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
-        participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress)
+        participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
 
         # ----- Load recorded data. ----- #
         for i in [3, 4]:
