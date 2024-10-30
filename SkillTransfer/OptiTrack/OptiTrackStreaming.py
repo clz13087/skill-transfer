@@ -18,7 +18,7 @@ class OptiTrackStreamingManager:
 		self.defaultParticipanNum = defaultParticipantNum
 		serverAddress = mocapServer
 		localAddress = mocapLocal
-		self.idList = idList
+		self.idList = idList[0]
 
 		for i in range(defaultParticipantNum):
 			self.position['participant'+str(i+1)] = np.zeros(3)
@@ -59,12 +59,16 @@ class OptiTrackStreamingManager:
 		rotation: array
 			Rotation
 		"""
-		if str(new_id) == self.idList[1]:
-			self.position["participant1"] = np.array(position)
-			self.rotation["participant1"] = np.array(rotation)
-		elif str(new_id) == self.idList[2]:
-			self.position["participant2"] = np.array(position)
-			self.rotation["participant2"] = np.array(rotation)
+		# if str(new_id) == self.idList[1]:
+		# 	self.position["participant1"] = np.array(position)
+		# 	self.rotation["participant1"] = np.array(rotation)
+		# elif str(new_id) == self.idList[2]:
+		# 	self.position["participant2"] = np.array(position)
+		# 	self.rotation["participant2"] = np.array(rotation)
+
+		if 'participant'+str(new_id) in self.position:
+			self.position['participant'+str(new_id)] = np.array(position)
+			self.rotation['participant'+str(new_id)] = np.array(rotation)
 
 		# if new_id > self.defaultParticipanNum:
 		# 	self.position['otherRigidBody'+str(new_id - self.defaultParticipanNum)] = np.array(position)
