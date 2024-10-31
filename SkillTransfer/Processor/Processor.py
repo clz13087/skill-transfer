@@ -156,8 +156,9 @@ class ProcessorClass:
                     # ----- Difference calculation and transmission to transparent ----- #
                     difference = caMotion.calculate_difference(relativePosition)
                     self.frameRate = 165 - (difference / 0.03) * (165 - 100)
+                    print(self.frameRate)
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(str(difference).encode(), ('133.68.108.26', 8001))
+                        sock.sendto(str(difference).encode(), ('133.68.108.26', 8000))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
@@ -189,7 +190,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
-                        time.sleep(2)
+                        time.sleep(5)
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)
