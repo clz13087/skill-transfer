@@ -1,5 +1,4 @@
 from email.policy import default
-from hashlib import new
 from threading import local
 from . import NatNetClient
 import numpy as np
@@ -12,21 +11,20 @@ class OptiTrackStreamingManager:
 	position = {}	# dict { 'ParticipantN': [x, y, z] }. 	N is the number of participants' rigid body. Unit = [m]
 	rotation = {}	# dict { 'ParticipantN': [x, y, z, w]}. N is the number of participants' rigid body
 
-	def __init__(self, defaultParticipantNum: int = 2, otherRigidBodyNum: int = 0, mocapServer: str = '', mocapLocal: str = '', idList: list = []):
+	def __init__(self, defaultParticipantNum: int = 2, otherRigidBodyNum: int = 0, mocapServer: str = '', mocapLocal: str = ''):
 		global serverAddress
 		global localAddress
 		self.defaultParticipanNum = defaultParticipantNum
 		serverAddress = mocapServer
 		localAddress = mocapLocal
-		self.idList = idList[0]
 
 		for i in range(defaultParticipantNum):
 			self.position['participant'+str(i+1)] = np.zeros(3)
-			self.rotation['participant'+str(i+1)] = np.array([0, 0, 0, 1])
+			self.rotation['participant'+str(i+1)] = np.zeros(4)
 
 		for i in range(otherRigidBodyNum):
 			self.position['otherRigidBody'+str(i+1)] = np.zeros(3)
-			self.rotation['otherRigidBody'+str(i+1)] = np.array([0, 0, 0, 1])
+			self.rotation['otherRigidBody'+str(i+1)] = np.zeros(4)
 
 
 	# This is a callback function that gets connected to the NatNet client and called once per mocap frame.
@@ -59,20 +57,13 @@ class OptiTrackStreamingManager:
 		rotation: array
 			Rotation
 		"""
-		# if str(new_id) == self.idList[1]:
-		# 	self.position["participant1"] = np.array(position)
-		# 	self.rotation["participant1"] = np.array(rotation)
-		# elif str(new_id) == self.idList[2]:
-		# 	self.position["participant2"] = np.array(position)
-		# 	self.rotation["participant2"] = np.array(rotation)
-
 		if 'participant'+str(new_id) in self.position:
 			self.position['participant'+str(new_id)] = np.array(position)
 			self.rotation['participant'+str(new_id)] = np.array(rotation)
 
-		# if new_id > self.defaultParticipanNum:
-		# 	self.position['otherRigidBody'+str(new_id - self.defaultParticipanNum)] = np.array(position)
-		# 	self.rotation['otherRigidBody'+str(new_id - self.defaultParticipanNum)] = np.array(rotation)
+		if new_id > self.defaultParticipanNum:
+			self.position['otherRigidBody'+str(new_id - self.defaultParticipanNum)] = np.array(position)
+			self.rotation['otherRigidBody'+str(new_id - self.defaultParticipanNum)] = np.array(rotation)
 
 	def stream_run(self):
 		streamingClient = NatNetClient.NatNetClient(serverIP=serverAddress, localIP=localAddress)

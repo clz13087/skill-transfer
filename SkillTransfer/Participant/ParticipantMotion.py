@@ -15,7 +15,7 @@ originalMin = 0
 originalMax = 1
 
 class ParticipantMotion:
-    def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int, motionInputSystem: str = "optitrack", mocapServer: str = "", mocapLocal: str = "", idList: list = []) -> None:
+    def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int, motionInputSystem: str = "optitrack", mocapServer: str = "", mocapLocal: str = "") -> None:
 
         self.defaultParticipantNum = defaultParticipantNum
         self.otherRigidBodyNum = otherRigidBodyNum
@@ -25,7 +25,6 @@ class ParticipantMotion:
         self.recordedGripperValue = {}
         self.recordedMotionLength = []
         self.InitBendingSensorValues = []
-        self.idList = idList
 
         n = 2
         fp = 10
@@ -40,7 +39,7 @@ class ParticipantMotion:
 
         # ----- Initialize participants' motion input system ----- #
         if motionInputSystem == "optitrack":
-            self.optiTrackStreamingManager = OptiTrackStreamingManager(defaultParticipantNum=defaultParticipantNum, otherRigidBodyNum=self.otherRigidBodyNum, mocapServer=mocapServer, mocapLocal=mocapLocal, idList=self.idList)
+            self.optiTrackStreamingManager = OptiTrackStreamingManager(defaultParticipantNum=defaultParticipantNum, otherRigidBodyNum=self.otherRigidBodyNum, mocapServer=mocapServer, mocapLocal=mocapLocal)
 
             # ----- Start streaming from OptiTrack ----- #
             streamingThread = threading.Thread(target=self.optiTrackStreamingManager.stream_run)
