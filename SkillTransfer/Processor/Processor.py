@@ -183,7 +183,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
-                        time.sleep(5)
+                        time.sleep(2)
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)

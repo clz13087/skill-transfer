@@ -22,11 +22,11 @@ class OptiTrackStreamingManager:
 
 		for i in range(defaultParticipantNum):
 			self.position['participant'+str(i+1)] = np.zeros(3)
-			self.rotation['participant'+str(i+1)] = np.zeros(4)
+			self.rotation['participant'+str(i+1)] = np.array([0, 0, 0, 1])
 
 		for i in range(otherRigidBodyNum):
 			self.position['otherRigidBody'+str(i+1)] = np.zeros(3)
-			self.rotation['otherRigidBody'+str(i+1)] = np.zeros(4)
+			self.rotation['otherRigidBody'+str(i+1)] = np.array([0, 0, 0, 1])
 
 
 	# This is a callback function that gets connected to the NatNet client and called once per mocap frame.

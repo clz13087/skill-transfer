@@ -18,9 +18,9 @@ participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
-idList,1,2
+idList,5,6
 
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
 
-weightListPos,0.2,0.2,0,0
-weightListRot,0.2,0.2,0,0
+weightListPos,0.2,0.2,0.8,0.8
+weightListRot,0.2,0.2,0.8,0.8
