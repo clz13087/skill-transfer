@@ -32,7 +32,7 @@ class CAMotion:
 
     beforeRotationsRobot = {}
 
-    def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int) -> None:
+    def __init__(self, defaultParticipantNum: int, otherRigidBodyNum: int, differenceLimit: float) -> None:
         for i in range(4):
             self.originPositions["participant" + str(i + 1)] = np.zeros(3)
             self.inversedMatrixforPosition["participant" + str(i + 1)] = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
@@ -56,6 +56,7 @@ class CAMotion:
         self.before_position = [[0, 0, 0], [0, 0, 0]]
         self.customweightPosition = [0, 0, 0]
         self.before_sharedPosition = [0, 0, 0]
+        self.differenceLimit = differenceLimit
 
         n = 2
         fp = 10
@@ -735,6 +736,5 @@ class CAMotion:
         right_diff = np.linalg.norm(learner_right - expert_right)
         average_diff = (left_diff + right_diff) / 2
 
-        # Limit once 3 cm
-        capped_diff = min(average_diff, 0.03)
+        capped_diff = min(average_diff, self.differenceLimit)
         return capped_diff

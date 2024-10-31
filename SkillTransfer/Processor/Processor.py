@@ -58,6 +58,7 @@ class ProcessorClass:
         otherRigidBodyNum = [addr for addr in dat if "otherRigidBodyNum" in addr[0]][0][1]
         robotNum = [addr for addr in dat if "robotNum" in addr[0]][0][1]
         idList = [addr for addr in dat if "idList" in addr[0]]
+        differenceLimit = [addr for addr in dat if "differenceLimit" in addr[0]][0][1]
 
         recordedDataPath = [addr for addr in dat if "recordedDataPath" in addr[0]][0][1]
 
@@ -87,6 +88,8 @@ class ProcessorClass:
         self.robotNum = int(robotNum)
         self.idList = idList
 
+        self.differenceLimit = float(differenceLimit)
+
         self.recordedDataPath = recordedDataPath
 
         self.weightListPos = weightListPos
@@ -104,7 +107,7 @@ class ProcessorClass:
         taskStartTime = 0
 
         # ----- Instantiating custom classes ----- #
-        caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum)
+        caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
@@ -154,11 +157,11 @@ class ProcessorClass:
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    difference = caMotion.calculate_difference(relativePosition)
-                    self.frameRate = 165 - (difference / 0.03) * (165 - 100)
+                    difference = caMotion.calculate_difference(relativePosition, )
+                    self.frameRate = 190 - (difference / self.differenceLimit) * (190 - 95)
                     print(self.frameRate)
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(str(difference).encode(), ('133.68.108.26', 8000))
+                        sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
