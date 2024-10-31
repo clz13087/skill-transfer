@@ -724,3 +724,17 @@ class CAMotion:
             
             # Apply negation based on i (even/odd)
             data[key][negate_idx[i % 2]] = -1 * data[key][negate_idx[i % 2]]
+
+    def calculate_difference(self, participant_positions):
+        learner_left = participant_positions["participant1"]
+        learner_right = participant_positions["participant2"]
+        expert_left = participant_positions["participant3"]
+        expert_right = participant_positions["participant4"]
+
+        left_diff = np.linalg.norm(learner_left - expert_left)
+        right_diff = np.linalg.norm(learner_right - expert_right)
+        average_diff = (left_diff + right_diff) / 2
+
+        # Limit once 3 cm
+        capped_diff = min(average_diff, 0.03)
+        return capped_diff

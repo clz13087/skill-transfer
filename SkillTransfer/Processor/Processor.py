@@ -153,6 +153,12 @@ class ProcessorClass:
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
+                    # ----- Difference calculation and transmission to transparent ----- #
+                    difference = caMotion.calculate_difference(relativePosition)
+                    self.frameRate = 165 - (difference / 0.03) * (165 - 100)
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(str(difference).encode(), ('133.68.108.26', 8001))
+
                     # ----- Data recording ----- #
                     if self.isExportData:
                         dataRecordManager.Record(position=relativePosition, rotation=relativeRotation, weight=weightList, robotpos=robotpos, robotrot=robotrot, duration=time.perf_counter() - taskStartTime)
