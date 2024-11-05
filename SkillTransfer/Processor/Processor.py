@@ -158,10 +158,11 @@ class ProcessorClass:
 
                     # ----- Difference calculation and transmission to transparent ----- #
                     difference = caMotion.calculate_difference(relativePosition)
-                    self.frameRate = 190 - (difference / self.differenceLimit) * (190 - 95)
+                    self.frameRate = 175 - (difference / self.differenceLimit) * (175 - 100)
+                    # self.frameRate = 130
+                    print(self.frameRate)
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(str(difference).encode(), ('133.68.108.26', 8000))
-                    self.frameRate = 190
+                        sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
