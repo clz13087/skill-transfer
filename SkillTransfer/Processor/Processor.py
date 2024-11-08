@@ -11,17 +11,16 @@ from ctypes import windll
 from datetime import datetime
 from enum import Flag
 from turtle import right
-from scipy.spatial.transform import Rotation as R
-
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from FileIO.FileIO import FileIO
 from matplotlib.pyplot import flag
 from Participant.ParticipantMotion import ParticipantMotion
 from Recorder.DataRecord import DataRecordManager
-# ----- Custom class ----- #
 from Robot.CAMotion import CAMotion
 from Robot.xArmTransform import xArmTransform
 from xarm.wrapper import XArmAPI
+from Participant.lstm_predictor import LSTMPredictor
 
 # ---------- Settings: Input mode ---------- #
 motionDataInputMode = "optitrack"
@@ -45,6 +44,11 @@ class ProcessorClass:
         motiveserverIP = [addr for addr in dat if "motiveServerIPAddress" in addr[0]][0][1]
         motivelocalIP = [addr for addr in dat if "motiveLocalIPAddress" in addr[0]][0][1]
         frameRate = [addr for addr in dat if "frameRate" in addr[0]][0][1]
+
+        lstmClientAddress = [addr for addr in dat if "lstmClientAddress" in addr[0]][0][1]
+        lstmClientPort = [addr for addr in dat if "lstmClientPort" in addr[0]][0][1]
+        lstmServerAddress = [addr for addr in dat if "lstmServerAddress" in addr[0]][0][1]
+        lstmServerPort = [addr for addr in dat if "lstmServerPort" in addr[0]][0][1]
 
         isExportData =  [addr for addr in dat if "isExportData" in addr[0]][0][1]
         if isExportData == "False":
@@ -79,6 +83,11 @@ class ProcessorClass:
         self.motivelocalIpAddress = motivelocalIP
         self.frameRate = int(frameRate)
 
+        self.lstmClientAddress = lstmClientAddress
+        self.lstmClientPort = lstmClientPort
+        self.lstmServerAddress = lstmServerAddress
+        self.lstmServerPort = lstmServerPort
+
         self.isExportData = bool(isExportData)
         self.dirPath = dirPath
 
@@ -112,11 +121,12 @@ class ProcessorClass:
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
+        lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmClientAddress, self.lstmServerPort)
 
         # ----- Load recorded data. ----- #
-        for i in [3, 4]:
-            participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
-            globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
+        # for i in [3, 4]:
+        #     participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
+        #     globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
 
         # ----- weight list ----- #
         weightListPosfloat = list(map(float, self.weightListPos[0][1:]))
@@ -143,10 +153,18 @@ class ProcessorClass:
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
-                    # ----- If self.loopCount exceeds the data range, data from the last frame is used ----- #
-                    for i in [3, 4]:
-                        relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
-                        relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
+                    # ----- record ----- #
+                    # for i in [3, 4]:
+                    #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
+                    #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
+
+                    # ----- lstm ----- #
+                    send_pos_rot = [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]]
+                    predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
+                    relativePosition["participant3"] = predictedList[0:3]
+                    relativePosition["participant4"] = predictedList[3:6]
+                    relativeRotation["participant3"] = predictedList[6:10]
+                    relativeRotation["participant4"] = predictedList[10:14]
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
@@ -157,11 +175,11 @@ class ProcessorClass:
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    difference = caMotion.calculate_difference(relativePosition)
-                    self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
-                    print(self.frameRate)
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
+                    # difference = caMotion.calculate_difference(relativePosition)
+                    # self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
+                    # print(self.frameRate)
+                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                    #     sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
