@@ -84,9 +84,9 @@ class ProcessorClass:
         self.frameRate = int(frameRate)
 
         self.lstmClientAddress = lstmClientAddress
-        self.lstmClientPort = lstmClientPort
+        self.lstmClientPort = int(lstmClientPort)
         self.lstmServerAddress = lstmServerAddress
-        self.lstmServerPort = lstmServerPort
+        self.lstmServerPort = int(lstmServerPort)
 
         self.isExportData = bool(isExportData)
         self.dirPath = dirPath
@@ -152,6 +152,7 @@ class ProcessorClass:
                     localRotation = participantMotion.LocalRotation(loopCount=self.loopCount)
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
+                    print(relativePosition, relativeRotation)
 
                     # ----- record ----- #
                     # for i in [3, 4]:
@@ -160,11 +161,21 @@ class ProcessorClass:
 
                     # ----- lstm ----- #
                     send_pos_rot = [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]]
+                    send_pos_rot = [value for array in send_pos_rot for value in array]
                     predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
-                    relativePosition["participant3"] = predictedList[0:3]
-                    relativePosition["participant4"] = predictedList[3:6]
-                    relativeRotation["participant3"] = predictedList[6:10]
-                    relativeRotation["participant4"] = predictedList[10:14]
+                    # print(send_pos_rot)
+                    # print(predictedList)
+                    if predictedList:
+                        relativePosition["participant3"] = predictedList[0:3]
+                        relativePosition["participant4"] = predictedList[3:6]
+                        relativeRotation["participant3"] = predictedList[6:10]
+                        relativeRotation["participant4"] = predictedList[10:14]
+                    else:
+                        relativePosition["participant3"] = np.zeros(3)
+                        relativePosition["participant4"] = np.zeros(3)
+                        relativeRotation["participant3"] = np.array([0, 0, 0, 1])
+                        relativeRotation["participant4"] = np.array([0, 0, 0, 1])
+
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
@@ -178,8 +189,8 @@ class ProcessorClass:
                     # difference = caMotion.calculate_difference(relativePosition)
                     # self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
                     # print(self.frameRate)
-                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    #     sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
                     # ----- Data recording ----- #
                     if self.isExportData:

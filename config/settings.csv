@@ -10,12 +10,12 @@ motiveServerIPAddress,133.68.108.111
 motiveLocalIPAddress,133.68.108.66
 wirelessIPAddress,192.168.11.5
 localIPAddress,127.0.0.1
-frameRate,175
+frameRate,200
 
-lstmClientAddress,133.68.108.36
-lstmClientPort,31110
-lstmServerAddress,133.68.108.66
-lstmServerPort,31111
+lstmClientAddress,133.68.108.66
+lstmClientPort,31111
+lstmServerAddress,133.68.108.36
+lstmServerPort,31110
 
 isExportData,False
 dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi2\8
