@@ -121,7 +121,7 @@ class ProcessorClass:
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
         dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
-        lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmClientAddress, self.lstmServerPort)
+        lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
 
         # ----- Load recorded data. ----- #
         # for i in [3, 4]:
@@ -152,7 +152,6 @@ class ProcessorClass:
                     localRotation = participantMotion.LocalRotation(loopCount=self.loopCount)
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
-                    print(relativePosition, relativeRotation)
 
                     # ----- record ----- #
                     # for i in [3, 4]:
@@ -164,7 +163,7 @@ class ProcessorClass:
                     send_pos_rot = [value for array in send_pos_rot for value in array]
                     predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
                     # print(send_pos_rot)
-                    # print(predictedList)
+                    print(predictedList)
                     if predictedList:
                         relativePosition["participant3"] = predictedList[0:3]
                         relativePosition["participant4"] = predictedList[3:6]
