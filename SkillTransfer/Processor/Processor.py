@@ -161,9 +161,10 @@ class ProcessorClass:
                     # ----- lstm ----- #
                     send_pos_rot = [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]]
                     send_pos_rot = [value for array in send_pos_rot for value in array]
+                    send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
                     predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
-                    # print(send_pos_rot)
-                    print(predictedList)
+                    print(send_pos_rot)
+                    # print(predictedList)
                     if predictedList:
                         relativePosition["participant3"] = predictedList[0:3]
                         relativePosition["participant4"] = predictedList[3:6]
