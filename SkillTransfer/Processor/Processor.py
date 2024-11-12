@@ -154,6 +154,9 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- record ----- #
+                    # for i in [1, 2]:
+                    #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["position"])
+                    #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["rotation"])
                     # for i in [3, 4]:
                     #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
                     #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
