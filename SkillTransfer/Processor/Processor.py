@@ -180,14 +180,14 @@ class ProcessorClass:
                     # ----- Difference calculation and transmission to transparent ----- #
                     difference = caMotion.calculate_difference(relativePosition)
                     self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
-                    # print(self.frameRate)
-                    self.frameRate  = 200
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
                     ratio = difference/self.differenceLimit
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
+                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
+                    print(weightList)
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)

@@ -77,7 +77,7 @@ class CAMotion:
         order_pos = [2, 1, 0]
         order_rot = [2, 1, 0, 3]
         self.reorder_and_negate(position, order_pos, 4, [1, 2])
-        self.reorder_and_negate(rotation, order_rot, 4, [1, 2])
+        self.reorder_and_negate(rotation, order_rot, 2, [1, 2])
 
         # ----- Shared transform ----- #
         sharedPosition_left = [0, 0, 0]

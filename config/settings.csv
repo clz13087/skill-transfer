@@ -25,7 +25,7 @@ otherRigidBodyNum,0
 robotNum,2
 idList,5,6
 
-differenceLimit,0.04
+differenceLimit,0.08
 
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
 
