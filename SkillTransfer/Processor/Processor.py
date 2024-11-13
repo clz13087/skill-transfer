@@ -114,6 +114,8 @@ class ProcessorClass:
         self.taskTime = []
         self.errorCount = 0
         taskStartTime = 0
+        ratiolist = []
+        timelist = []
 
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
@@ -185,6 +187,8 @@ class ProcessorClass:
 
                     # ----- Control ratio varies depending on the deference. ----- #
                     ratio = difference/self.differenceLimit
+                    ratiolist.append(ratio)
+                    timelist.append(time.perf_counter() - taskStartTime)
                     weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
                     print(weightList)
