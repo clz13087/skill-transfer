@@ -190,8 +190,9 @@ class ProcessorClass:
                     ratio = difference/self.differenceLimit
                     ratiolist.append(ratio)
                     timelist.append(time.perf_counter() - taskStartTime)
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
+                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
+                    # weightList = [[0, 0, 1, 1], [1-ratio, 1-ratio, ratio, ratio]]
                     print(weightList)
 
                     # ----- Calculate the integration ----- #
@@ -267,10 +268,12 @@ class ProcessorClass:
 
             windll.winmm.timeEndPeriod(1)
 
-            plt.plot(timelist, ratiolist, marker='o', linestyle='-')
-            plt.xlabel('Time')
-            plt.ylabel('Ratio')
-            plt.show()
+            if self.loopCount > 100:
+                plt.plot(timelist, ratiolist, linestyle='-')
+                plt.xlabel('Time')
+                plt.ylabel('Ratio')
+                plt.ylim(0, 1)
+                plt.show()
 
         except:
             print("----- Exception has occurred -----")
