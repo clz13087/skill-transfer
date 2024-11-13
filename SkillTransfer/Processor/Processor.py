@@ -7,6 +7,7 @@ import csv
 import os
 import glob
 import socket
+import matplotlib.pyplot as plt
 from ctypes import windll
 from datetime import datetime
 from enum import Flag
@@ -265,6 +266,11 @@ class ProcessorClass:
                 arm_2.disconnect()
 
             windll.winmm.timeEndPeriod(1)
+
+            plt.plot(timelist, ratiolist, marker='o', linestyle='-')
+            plt.xlabel('Time')
+            plt.ylabel('Ratio')
+            plt.show()
 
         except:
             print("----- Exception has occurred -----")
