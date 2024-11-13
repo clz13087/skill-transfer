@@ -124,9 +124,9 @@ class ProcessorClass:
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
 
         # ----- Load recorded data. ----- #
-        # for i in [3, 4]:
-        #     participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
-        #     globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
+        for i in [3, 4]:
+            participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
+            globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
 
         # ----- weight list ----- #
         weightListPosfloat = list(map(float, self.weightListPos[0][1:]))
@@ -157,28 +157,37 @@ class ProcessorClass:
                     # for i in [1, 2]:
                     #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["position"])
                     #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["rotation"])
-                    # for i in [3, 4]:
-                    #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
-                    #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
+                    for i in [3, 4]:
+                        relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
+                        relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- lstm ----- #
-                    send_pos_rot = [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]]
-                    send_pos_rot = [value for array in send_pos_rot for value in array]
-                    send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
-                    predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
-                    print(send_pos_rot)
-                    # print(predictedList)
-                    if predictedList:
-                        relativePosition["participant3"] = predictedList[0:3]
-                        relativePosition["participant4"] = predictedList[3:6]
-                        relativeRotation["participant3"] = predictedList[6:10]
-                        relativeRotation["participant4"] = predictedList[10:14]
-                    else:
-                        relativePosition["participant3"] = np.zeros(3)
-                        relativePosition["participant4"] = np.zeros(3)
-                        relativeRotation["participant3"] = np.array([0, 0, 0, 1])
-                        relativeRotation["participant4"] = np.array([0, 0, 0, 1])
+                    # send_pos_rot = [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]]
+                    # send_pos_rot = [value for array in send_pos_rot for value in array]
+                    # send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
+                    # predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
+                    # if predictedList:
+                    #     relativePosition["participant3"] = predictedList[0:3]
+                    #     relativePosition["participant4"] = predictedList[3:6]
+                    #     relativeRotation["participant3"] = predictedList[6:10]
+                    #     relativeRotation["participant4"] = predictedList[10:14]
+                    # else:
+                    #     relativePosition["participant3"] = np.zeros(3)
+                    #     relativePosition["participant4"] = np.zeros(3)
+                    #     relativeRotation["participant3"] = np.array([0, 0, 0, 1])
+                    #     relativeRotation["participant4"] = np.array([0, 0, 0, 1])
 
+                    # ----- Difference calculation and transmission to transparent ----- #
+                    difference = caMotion.calculate_difference(relativePosition)
+                    self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
+                    # print(self.frameRate)
+                    self.frameRate  = 200
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
+
+                    # ----- Control ratio varies depending on the deference. ----- #
+                    ratio = difference/self.differenceLimit
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
@@ -187,13 +196,6 @@ class ProcessorClass:
                     if isEnablexArm:
                         arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
                         arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
-
-                    # ----- Difference calculation and transmission to transparent ----- #
-                    difference = caMotion.calculate_difference(relativePosition)
-                    self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
-                    # print(self.frameRate)
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
