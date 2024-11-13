@@ -185,8 +185,8 @@ class ProcessorClass:
 
                     # ----- Control ratio varies depending on the deference. ----- #
                     ratio = difference/self.differenceLimit
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
+                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
                     print(weightList)
 
                     # ----- Calculate the integration ----- #
