@@ -122,7 +122,7 @@ class ProcessorClass:
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
-        dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
+        dataRecordManager = DataRecordManager(participantNum=6, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
 
@@ -165,23 +165,19 @@ class ProcessorClass:
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- lstm ----- #
-                    # send_pos_rot = [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]]
-                    # send_pos_rot = [value for array in send_pos_rot for value in array]
-                    # send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
-                    # predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
-                    # if predictedList:
-                    #     relativePosition["participant3"] = predictedList[0:3]
-                    #     relativePosition["participant4"] = predictedList[3:6]
-                    #     relativeRotation["participant3"] = predictedList[6:10]
-                    #     relativeRotation["participant4"] = predictedList[10:14]
-                    # else:
-                    #     relativePosition["participant3"] = np.zeros(3)
-                    #     relativePosition["participant4"] = np.zeros(3)
-                    #     relativeRotation["participant3"] = np.array([0, 0, 0, 1])
-                    #     relativeRotation["participant4"] = np.array([0, 0, 0, 1])
+                    send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
+                    send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
+                    predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
+                    if predictedList:
+                        relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = predictedList[0:3], predictedList[3:6], predictedList[6:10], predictedList[10:14]
+                    else:
+                        relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    difference = caMotion.calculate_difference(relativePosition)
+                    relativePosition_for_difference = relativePosition
+                    for i in [3, 4]:
+                        relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + (self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
+                    difference = caMotion.calculate_difference(relativePosition_for_difference)
                     self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
@@ -190,8 +186,8 @@ class ProcessorClass:
                     ratio = difference/self.differenceLimit
                     ratiolist.append(ratio)
                     timelist.append(time.perf_counter() - taskStartTime)
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
+                    # weightList = [[1-ratio, 1-ratio, ratio, ratio], [0, 0, 1, 1]]
                     # weightList = [[0, 0, 1, 1], [1-ratio, 1-ratio, ratio, ratio]]
                     print(weightList)
 

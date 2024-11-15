@@ -727,8 +727,8 @@ class CAMotion:
             data[key][negate_idx[i % 2]] = -1 * data[key][negate_idx[i % 2]]
 
     def calculate_difference(self, participant_positions):
-        learner_left = np.array(participant_positions["participant1"])
-        learner_right = np.array(participant_positions["participant2"])
+        learner_left = np.array(participant_positions["participant5"])
+        learner_right = np.array(participant_positions["participant6"])
         expert_left = np.array(participant_positions["participant3"])
         expert_right = np.array(participant_positions["participant4"])
 
