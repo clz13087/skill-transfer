@@ -18,16 +18,16 @@ lstmServerAddress,133.68.108.66
 lstmServerPort,31111
 
 isExportData,False
-dirPath,C:\Users\hapticslab\Documents\User\tsugumi\si2024\tsugumi2\8
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\yamashita\20241118\12
 participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
 idList,5,6
 
-differenceLimit,0.1
+differenceLimit,0.08
 
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
 
-weightListPos,1,1,0,0
-weightListRot,1,1,0,0
+weightListPos,1,1,0,0,0,0
+weightListRot,0,0,1,1,0,0
