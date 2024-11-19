@@ -166,10 +166,12 @@ class ProcessorClass:
 
                     # ----- Butterworth Filter for relativePosition and relativeRotation ----- #
                     for key in relativePosition:
-                        relativePosition[key] = filtfilt(b, a, relativePosition[key])
+                        for i in range(3):
+                            relativePosition[key][i] = filtfilt(b, a, relativePosition[key][i])
 
                     for key in relativeRotation:
-                        relativeRotation[key] = filtfilt(b, a, relativeRotation[key])
+                        for i in range(4):
+                            relativeRotation[key][i] = filtfilt(b, a, relativeRotation[key][i])
 
                     # ----- record ----- #
                     # for i in [1, 2]:
