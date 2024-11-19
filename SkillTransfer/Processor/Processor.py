@@ -179,6 +179,7 @@ class ProcessorClass:
                         relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
                     difference = caMotion.calculate_difference(relativePosition_for_difference)
                     self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
+                    self.frameRate = 200
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
@@ -187,7 +188,7 @@ class ProcessorClass:
                     ratiolist.append(ratio)
                     timelist.append(time.perf_counter() - taskStartTime)
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio], [1-ratio, 1-ratio, ratio, ratio]]
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio,0,0], [0, 0, 1, 1,0,0]]
+                    # weightList = [[1-ratio, 1-ratio, ratio, ratio,0,0], [0, 0, 1, 1,0,0]]
                     # weightList = [[0, 0, 1, 1], [1-ratio, 1-ratio, ratio, ratio]]
                     print(weightList)
 
