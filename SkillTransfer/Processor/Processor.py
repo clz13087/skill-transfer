@@ -119,13 +119,6 @@ class ProcessorClass:
         ratiolist = []
         timelist = []
 
-        # ----- filter ----- #
-        sample_rate = 200
-        cutoff_frequency = 10
-        nyquist = 0.5 * sample_rate
-        normal_cutoff = cutoff_frequency / nyquist
-        b, a = butter(N=4, Wn=normal_cutoff, btype='low', analog=False)
-
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
@@ -164,15 +157,6 @@ class ProcessorClass:
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
-                    # ----- Butterworth Filter for relativePosition and relativeRotation ----- #
-                    for key in relativePosition:
-                        for i in range(3):
-                            relativePosition[key][i] = filtfilt(b, a, relativePosition[key][i])
-
-                    for key in relativeRotation:
-                        for i in range(4):
-                            relativeRotation[key][i] = filtfilt(b, a, relativeRotation[key][i])
-
                     # ----- record ----- #
                     # for i in [1, 2]:
                     #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["position"])
@@ -196,7 +180,6 @@ class ProcessorClass:
                         relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
                     difference = caMotion.calculate_difference(relativePosition_for_difference)
                     self.frameRate = 200 - (difference / self.differenceLimit) * (200 - 100)
-                    self.frameRate = 200
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
 
