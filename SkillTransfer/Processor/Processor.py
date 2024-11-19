@@ -22,6 +22,7 @@ from Robot.CAMotion import CAMotion
 from Robot.xArmTransform import xArmTransform
 from xarm.wrapper import XArmAPI
 from Participant.lstm_predictor import LSTMPredictor
+from scipy.signal import butter, filtfilt
 
 # ---------- Settings: Input mode ---------- #
 motionDataInputMode = "optitrack"
@@ -118,6 +119,13 @@ class ProcessorClass:
         ratiolist = []
         timelist = []
 
+        # ----- filter ----- #
+        sample_rate = 200
+        cutoff_frequency = 10
+        nyquist = 0.5 * sample_rate
+        normal_cutoff = cutoff_frequency / nyquist
+        b, a = butter(N=4, Wn=normal_cutoff, btype='low', analog=False)
+
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
@@ -155,6 +163,13 @@ class ProcessorClass:
                     localRotation = participantMotion.LocalRotation(loopCount=self.loopCount)
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
+
+                    # ----- Butterworth Filter for relativePosition and relativeRotation ----- #
+                    for key in relativePosition:
+                        relativePosition[key] = filtfilt(b, a, relativePosition[key])
+
+                    for key in relativeRotation:
+                        relativeRotation[key] = filtfilt(b, a, relativeRotation[key])
 
                     # ----- record ----- #
                     # for i in [1, 2]:
