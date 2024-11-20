@@ -117,7 +117,7 @@ class CAMotion:
         sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
-        self.rotarm = dict(robot1=sharedRotation_euler_left, robot2=sharedRotation_euler_right)
+        self.rotarm = dict(robot1=sharedRotation_euler_left.extend(sharedRotation_quaternion_left), robot2=sharedRotation_euler_right.extend(sharedRotation_quaternion_right))
 
         return self.posarm, self.rotarm
 

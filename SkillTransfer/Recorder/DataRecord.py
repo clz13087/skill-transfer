@@ -126,7 +126,7 @@ class DataRecordManager:
             Directory path (not include the file name).
         """
         transformHeader = ["timestamp", "time", "x", "y", "z", "qx", "qy", "qz", "qw", "weightpos", "weightrot"]
-        robotHeader = ["timestamp", "time", "x", "y", "z", "qx", "qy", "qz", "qw"]
+        robotHeader = ["timestamp", "time", "x", "y", "z", "rx", "ry", "rz", "qx", "qy", "qz", "qw"]
         headHeader = ["timestamp", "time", "x", "y", "z", "rx", "ry", "rz"]
 
         print("\n---------- DataRecordManager.ExportSelf ----------")
