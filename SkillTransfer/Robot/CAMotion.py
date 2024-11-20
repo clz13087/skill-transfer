@@ -78,7 +78,7 @@ class CAMotion:
         # ----- change cordinate from motive to xArm ----- #
         order_pos = [2, 1, 0]
         order_rot = [2, 1, 0, 3]
-        self.reorder_and_negate(position, order_pos, 4, [1, 2])
+        self.reorder_and_negate(position, order_pos, 2, [1, 2])
         self.reorder_and_negate(rotation, order_rot, 2, [1, 2])
 
         for i in range(4):
@@ -117,7 +117,7 @@ class CAMotion:
         sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
 
         self.posarm = dict(robot1=sharedPosition_left, robot2=sharedPosition_right)
-        self.rotarm = dict(robot1=np.concatenate((sharedRotation_euler_left, sharedRotation_quaternion_left)), robot2=np.concatenate((sharedRotation_euler_right, sharedRotation_quaternion_right)))
+        self.rotarm = dict(robot1=sharedRotation_euler_left.extend(sharedRotation_quaternion_left), robot2=sharedRotation_euler_right.extend(sharedRotation_quaternion_right))
 
         return self.posarm, self.rotarm
 
@@ -660,5 +660,8 @@ class CAMotion:
         right_diff = np.linalg.norm(learner_right - expert_right)
         average_diff = (left_diff + right_diff) / 2
 
-        capped_diff = min(average_diff, self.differenceLimit)
-        return capped_diff
+        capped_average_diff = min(average_diff, self.differenceLimit)
+        capped_left_diff = min(left_diff, self.differenceLimit)
+        capped_right_diff = min(left_diff, self.differenceLimit)
+
+        return capped_average_diff, capped_left_diff, capped_right_diff
