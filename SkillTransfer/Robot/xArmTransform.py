@@ -21,7 +21,7 @@ class xArmTransform:
     __maxX, __maxY, __maxZ = 9999, 9999, 9999
     __maxRoll, __maxPitch, __maxYaw = 9999, 9999, 9999
 
-    def __init__(self, initpos: list, initrot: list):
+    def __init__(self, initpos: list, initrot: list, initangle: list):
         self.n = 4
         self.fp = 40
         self.fs = 180
@@ -33,6 +33,7 @@ class xArmTransform:
 
         self.__initX, self.__initY, self.__initZ = int(initpos[0][1]), int(initpos[0][2]), int(initpos[0][3])
         self.__initRoll, self.__initPitch, self.__initYaw = int(initrot[0][1]), int(initrot[0][2]), int(initrot[0][3])
+        self.__initAngleList = initangle
 
     def GetInitialTransform(self):
         """
@@ -40,7 +41,10 @@ class xArmTransform:
         """
 
         return self.__initX, self.__initY, self.__initZ, self.__initRoll, self.__initPitch, self.__initYaw
-
+    
+    def GetInitialAngle(self):
+        return self.__initAngleList
+    
     def Transform(self, relativepos: list, relativerot: list, isLimit=True, isOnlyPosition=False):
         """
         Converts from motive coordinate to xarm coordinate and limits values.

@@ -37,10 +37,12 @@ class ProcessorClass:
         xArmIP_left = [addr for addr in dat if "xArmIPAddress_left" in addr[0]][0][1]
         initialpos_left = [addr for addr in dat if "initialpos_left" in addr[0]]
         initialrot_left = [addr for addr in dat if "initialrot_left" in addr[0]]
+        initAngleList_left = [addr for addr in dat if "initAngleList_left" in addr[0]]
 
         xArmIP_right = [addr for addr in dat if "xArmIPAddress_right" in addr[0]][0][1]
         initialpos_right = [addr for addr in dat if "initialpos_right" in addr[0]]
         initialrot_right = [addr for addr in dat if "initialrot_right" in addr[0]]
+        initAngleList_right = [addr for addr in dat if "initAngleList_right" in addr[0]]
 
         wirelessIP = [addr for addr in dat if "wirelessIPAddress" in addr[0]][0][1]
         localIP = [addr for addr in dat if "localIPAddress" in addr[0]][0][1]
@@ -75,10 +77,12 @@ class ProcessorClass:
         self.xArmIpAddress_left = xArmIP_left
         self.initialpos_left = initialpos_left
         self.initislrot_left = initialrot_left
+        self.initAngleList_left =  list(map(float, initAngleList_left[0][1:]))
 
         self.xArmIpAddress_right = xArmIP_right
         self.initialpos_right = initialpos_right
         self.initislrot_right = initialrot_right
+        self.initAngleList_right =  list(map(float, initAngleList_right[0][1:]))
 
         self.wirelessIpAddress = wirelessIP
         self.localIpAddress = localIP
@@ -122,8 +126,8 @@ class ProcessorClass:
 
         # ----- Instantiating custom classes ----- #
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
-        transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left)
-        transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right)
+        transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, initangle=self.initAngleList_left)
+        transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, initangle=self.initAngleList_right)
         dataRecordManager = DataRecordManager(participantNum=6, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
@@ -181,9 +185,8 @@ class ProcessorClass:
                         relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
                     average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
                     self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    self.frameRate = 200
                     data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    #     sock.sendto(str(self.frameRate).encode(), ('133.68.108.26', 8000))
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
@@ -192,8 +195,9 @@ class ProcessorClass:
                     ratiolist.append(ratio)
                     timelist.append(time.perf_counter() - taskStartTime)
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
+                    # weightList = [[0, 0, 1, 1, 0, 0], [0, 0, 1, 1, 0, 0]]
                     print(weightList)
 
                     # ----- Calculate the integration ----- #
@@ -329,7 +333,7 @@ class ProcessorClass:
         print("Error count\t > ", self.errorCount)
         print("------------------------")
 
-    def InitializeAll(self, robotArm, transform, isSetInitPosition=True):
+    def InitializeAll(self, robotArm, transform, isSetInitPosition=False, isSetInitAngle=True):
         """
         Initialize the xArm
 
@@ -352,9 +356,12 @@ class ProcessorClass:
         robotArm.motion_enable(enable=True)
         robotArm.set_mode(0)  # set mode: position control mode
         robotArm.set_state(state=0)  # set state: sport state
-        if isSetInitPosition:
-            initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
-            robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
+        # if isSetInitPosition:
+        #     initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
+        #     robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
+        if isSetInitAngle:
+            init_angle_list = transform.GetInitialAngle()
+            robotArm.set_servo_angle(angle=init_angle_list, is_radian=False, wait=True)
         else:
             robotArm.reset(wait=True)
         print("Initialized > xArm")
