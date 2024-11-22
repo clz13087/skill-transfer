@@ -128,7 +128,7 @@ class ProcessorClass:
         caMotion = CAMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, initangle=self.initAngleList_left)
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, initangle=self.initAngleList_right)
-        dataRecordManager = DataRecordManager(participantNum=6, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
+        dataRecordManager = DataRecordManager(participantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
 
@@ -163,42 +163,39 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- record ----- #
-                    # for i in [1, 2]:
-                    #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["position"])
-                    #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i+2}_data"][min(self.loopCount, len(globals()[f"participant{i+2}_data"]) - 1)]["rotation"])
                     for i in [3, 4]:
                         relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- lstm ----- #
-                    send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
-                    send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
-                    predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
-                    if predictedList:
-                        relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = predictedList[0:3], predictedList[3:6], predictedList[6:10], predictedList[10:14]
-                    else:
-                        relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
+                    # send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
+                    # send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
+                    # predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
+                    # if predictedList:
+                    #     relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = predictedList[0:3], predictedList[3:6], predictedList[6:10], predictedList[10:14]
+                    # else:
+                    #     relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    relativePosition_for_difference = relativePosition
-                    for i in [3, 4]:
-                        relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
-                    average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
-                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
-                    self.frameRate = 200
-                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                    # relativePosition_for_difference = relativePosition
+                    # for i in [3, 4]:
+                    #     relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
+                    # average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
+                    # self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    # self.frameRate = 200
+                    # data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                    #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
-                    ratio = average_diff/self.differenceLimit
-                    ratiolist.append(ratio)
-                    timelist.append(time.perf_counter() - taskStartTime)
+                    # ratio = average_diff/self.differenceLimit
+                    # ratiolist.append(ratio)
+                    # timelist.append(time.perf_counter() - taskStartTime)
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
+                    # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [0, 0, 1, 1, 0, 0]]
-                    print(weightList)
+                    # print(weightList)
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
@@ -356,22 +353,15 @@ class ProcessorClass:
         robotArm.motion_enable(enable=True)
         robotArm.set_mode(0)  # set mode: position control mode
         robotArm.set_state(state=0)  # set state: sport state
-        # if isSetInitPosition:
-        #     initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
-        #     robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
         if isSetInitAngle:
             init_angle_list = transform.GetInitialAngle()
             robotArm.set_servo_angle(angle=init_angle_list, is_radian=False, wait=True)
+        # if isSetInitPosition:
+        #     initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
+        #     robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
         else:
             robotArm.reset(wait=True)
         print("Initialized > xArm")
-
-        # robotArm.set_tgpio_modbus_baudrate(2000000)
-        # robotArm.set_gripper_mode(0)
-        # robotArm.set_gripper_enable(True)
-        # robotArm.set_gripper_position(850, speed=5000)
-        # robotArm.getset_tgpio_modbus_data(self.ConvertToModbusData(425))
-        # print("Initialized > xArm gripper")
 
         robotArm.set_mode(1)
         robotArm.set_state(state=0)
