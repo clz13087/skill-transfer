@@ -187,10 +187,10 @@ class ProcessorClass:
                         sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
-                    # ratio = average_diff/self.differenceLimit
-                    # ratiolist.append(ratio)
-                    # timelist.append(time.perf_counter() - taskStartTime)
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
+                    ratio = average_diff/self.differenceLimit
+                    ratiolist.append(ratio)
+                    timelist.append(time.perf_counter() - taskStartTime)
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [0, 0, 1, 1, 0, 0]]
