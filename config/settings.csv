@@ -19,9 +19,9 @@ lstmClientPort,31110
 lstmServerAddress,133.68.108.66
 lstmServerPort,31111
 
-isExportData,False
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\yamashita\fordtw\record
-participantNum,2
+isExportData,True
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\kumagai\20241125\1
+participantNum,6
 gripperNum,0
 otherRigidBodyNum,0
 robotNum,2
@@ -34,5 +34,5 @@ C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
 C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi3\3
 C:\Users\SANOLAB\Documents\tsugumi\yamashita\20241118\10
 
-weightListPos,1,1,0,0,0,0
-weightListRot,1,1,0,0,0,0
+weightListPos,0.25,0.25,0.75,0.75,0,0
+weightListRot,0.25,0.25,0.75,0.75,0,0

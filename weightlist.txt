@@ -11,8 +11,8 @@ weightListPos,0.2,0.2,0.8,0.8
 weightListRot,0.2,0.2,0.8,0.8
 
 25
-weightListPos,0.25,0.25,0.75,0.75
-weightListRot,0.25,0.25,0.75,0.75
+weightListPos,0.25,0.25,0.75,0.75,0,0
+weightListRot,0.25,0.25,0.75,0.75,0,0
 
 50
 weightListPos,0.5,0.5,0.5,0.5,0,0
@@ -23,8 +23,8 @@ weightListPos,0.7,0.7,0.3,0.3
 weightListRot,0.7,0.7,0.3,0.3
 
 75
-weightListPos,0.75,0.75,0.25,0.25
-weightListRot,0.75,0.75,0.25,0.25
+weightListPos,0.75,0.75,0.25,0.25,0,0
+weightListRot,0.75,0.75,0.25,0.25,0,0
 
 90
 weightListPos,0.9,0.9,0.1,0.1

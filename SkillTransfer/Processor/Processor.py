@@ -168,24 +168,23 @@ class ProcessorClass:
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- lstm ----- #
-                    # send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
-                    # send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
-                    # predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
-                    # if predictedList:
-                    #     relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = predictedList[0:3], predictedList[3:6], predictedList[6:10], predictedList[10:14]
-                    # else:
-                    #     relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
+                    send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
+                    send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
+                    predictedList = lstmPredictor.predict_position_rotation(send_pos_rot)
+                    if predictedList:
+                        relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = predictedList[0:3], predictedList[3:6], predictedList[6:10], predictedList[10:14]
+                    else:
+                        relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    # relativePosition_for_difference = relativePosition
-                    # for i in [3, 4]:
-                    #     relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
-                    # average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
-                    # self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
-                    # self.frameRate = 200
-                    # data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                    relativePosition_for_difference = relativePosition
+                    for i in [3, 4]:
+                        relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
+                    average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
+                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
                     # ratio = average_diff/self.differenceLimit
@@ -195,7 +194,7 @@ class ProcessorClass:
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [0, 0, 1, 1, 0, 0]]
-                    # print(weightList)
+                    print(weightList)
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
