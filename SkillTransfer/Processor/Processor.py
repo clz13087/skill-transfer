@@ -274,10 +274,9 @@ class ProcessorClass:
                 plt.xlabel('Time')
                 plt.ylabel('Ratio')
                 plt.ylim(0, 1)
+                if self.isExportData:
+                    plt.savefig(self.dirPath + "/" + "ratio.png")
                 plt.show()
-                # if self.isExportData:
-                    # plt.savefig(self.recordedDataPath +"ratio.png")
-                    # print('hozonseikou')
 
         except:
             print("----- Exception has occurred -----")
