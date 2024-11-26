@@ -19,7 +19,7 @@ lstmClientPort,31110
 lstmServerAddress,133.68.108.66
 lstmServerPort,31111
 
-isExportData,True
+isExportData,False
 dirPath,C:\Users\SANOLAB\Documents\tsugumi\kumagai\20241126\1
 participantNum,6
 gripperNum,0
