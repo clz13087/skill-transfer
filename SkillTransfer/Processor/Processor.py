@@ -191,6 +191,7 @@ class ProcessorClass:
                     ratiolist.append(ratio)
                     timelist.append(time.perf_counter() - taskStartTime)
                     weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
+                    weightList = [[1-ratio, ratio, ratio, 1-ratio, 0, 0], [1, ratio, 1-ratio, ratio, 0, 0]]
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [0, 0, 1, 1, 0, 0]]
