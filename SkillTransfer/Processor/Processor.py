@@ -182,6 +182,7 @@ class ProcessorClass:
                         relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
                     average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
                     self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    self.frameRate = 200
                     data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
                     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                         sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
@@ -355,12 +356,12 @@ class ProcessorClass:
         robotArm.motion_enable(enable=True)
         robotArm.set_mode(0)  # set mode: position control mode
         robotArm.set_state(state=0)  # set state: sport state
-        # if isSetInitAngle:
-        #     init_angle_list = transform.GetInitialAngle()
-        #     robotArm.set_servo_angle(angle=init_angle_list, is_radian=False, wait=True)
-        if isSetInitPosition:
-            initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
-            robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
+        if isSetInitAngle:
+            init_angle_list = transform.GetInitialAngle()
+            robotArm.set_servo_angle(angle=init_angle_list, is_radian=False, wait=True)
+        # if isSetInitPosition:
+        #     initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
+        #     robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
         else:
             robotArm.reset(wait=True)
         print("Initialized > xArm")
