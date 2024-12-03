@@ -65,6 +65,12 @@ class OptiTrackStreamingManager:
 		elif str(new_id) == self.idList[2]:
 			self.position["participant2"] = np.array(position)
 			self.rotation["participant2"] = np.array(rotation)
+		elif str(new_id) == self.idList[3]:
+			self.position["participant3"] = np.array(position)
+			self.rotation["participant3"] = np.array(rotation)
+		elif str(new_id) == self.idList[4]:
+			self.position["participant4"] = np.array(position)
+			self.rotation["participant4"] = np.array(rotation)
 
 		# if new_id > self.defaultParticipanNum:
 		# 	self.position['otherRigidBody'+str(new_id - self.defaultParticipanNum)] = np.array(position)
