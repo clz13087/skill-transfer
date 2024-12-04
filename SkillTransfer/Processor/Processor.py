@@ -356,12 +356,12 @@ class ProcessorClass:
         robotArm.motion_enable(enable=True)
         robotArm.set_mode(0)  # set mode: position control mode
         robotArm.set_state(state=0)  # set state: sport state
-        if isSetInitAngle:
-            init_angle_list = transform.GetInitialAngle()
-            robotArm.set_servo_angle(angle=init_angle_list, is_radian=False, wait=True)
-        # if isSetInitPosition:
-        #     initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
-        #     robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
+        # if isSetInitAngle:
+        #     init_angle_list = transform.GetInitialAngle()
+        #     robotArm.set_servo_angle(angle=init_angle_list, is_radian=False, wait=True)
+        if isSetInitPosition:
+            initX, initY, initZ, initRoll, initPitch, initYaw = transform.GetInitialTransform()
+            robotArm.set_position(x=initX, y=initY, z=initZ, roll=initRoll, pitch=initPitch, yaw=initYaw, wait=True)
         else:
             robotArm.reset(wait=True)
         print("Initialized > xArm")
