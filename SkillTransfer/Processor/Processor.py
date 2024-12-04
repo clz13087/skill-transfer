@@ -133,9 +133,9 @@ class ProcessorClass:
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
 
         # ----- Load recorded data. ----- #
-        # for i in [3, 4]:
-        #     participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
-        #     globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
+        for i in [3, 4]:
+            participant_path = os.path.join(self.recordedDataPath, f"*Transform_Participant_{i-2}*.csv")
+            globals()[f"participant{i}_data"] = self.load_csv_data(glob.glob(participant_path)[0])
 
         # ----- weight list ----- #
         weightListPosfloat = list(map(float, self.weightListPos[0][1:]))
@@ -163,9 +163,9 @@ class ProcessorClass:
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
 
                     # ----- record ----- #
-                    # for i in [3, 4]:
-                    #     relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
-                    #     relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
+                    for i in [3, 4]:
+                        relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
+                        relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- lstm ----- #
                     # send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
@@ -177,20 +177,21 @@ class ProcessorClass:
                     #     relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    # relativePosition_for_difference = relativePosition
-                    # for i in [3, 4]:
-                    #     relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
-                    # average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
-                    # self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
-                    # data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                    relativePosition_for_difference = relativePosition
+                    for i in [3, 4]:
+                        relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
+                    average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
+                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    self.frameRate = 200
+                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
-                    # ratio = average_diff/self.differenceLimit
-                    # ratiolist.append(ratio)
-                    # timelist.append(time.perf_counter() - taskStartTime)
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
+                    ratio = average_diff/self.differenceLimit
+                    ratiolist.append(ratio)
+                    timelist.append(time.perf_counter() - taskStartTime)
+                    weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[1-ratio, ratio, ratio, 1-ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     # weightList = [[0, 0, 1, 1, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
