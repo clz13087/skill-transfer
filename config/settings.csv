@@ -20,7 +20,7 @@ lstmServerAddress,133.68.108.66
 lstmServerPort,31111
 
 isExportData,False
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\3
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\7
 participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
@@ -29,7 +29,7 @@ idList,5,6
 
 differenceLimit,0.1
 
-recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\3
+recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
 
 weightListPos,0,0,1,1,0,0
 weightListRot,0,0,1,1,0,0
