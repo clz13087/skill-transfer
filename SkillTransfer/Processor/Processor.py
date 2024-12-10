@@ -1,4 +1,5 @@
 import datetime
+from logging import Filter
 import pprint
 import threading
 import time
@@ -23,6 +24,7 @@ from Robot.CAMotion import CAMotion
 from Robot.xArmTransform import xArmTransform
 from xarm.wrapper import XArmAPI
 from Participant.lstm_predictor import LSTMPredictor
+from Filter.Filter import Filter
 from scipy.signal import butter, filtfilt
 
 # ---------- Settings: Input mode ---------- #
@@ -131,6 +133,7 @@ class ProcessorClass:
         dataRecordManager = DataRecordManager(participantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
+        filter = Filter(buffer_size=30, cutoff=5., fs=200.0)
 
         # ----- Load recorded data. ----- #
         for i in [3, 4]:
@@ -168,12 +171,8 @@ class ProcessorClass:
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- filter ----- #
-                    fs = self.frameRate
-                    cutoff = 5.0
-                    for key in relativePosition.keys():
-                        relativePosition[key] = caMotion.apply_butterworth_filter(relativePosition[key], cutoff, fs)
-                    for key in relativeRotation.keys():
-                        relativeRotation[key] = caMotion.apply_butterworth_filter(relativeRotation[key], cutoff, fs)
+                    relativePosition = filter.apply_butterworth_filter(relativePosition, mode='position')
+                    relativeRotation = filter.apply_butterworth_filter(relativeRotation, mode='rotation')
 
                     # ----- lstm ----- #
                     # send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
@@ -185,15 +184,15 @@ class ProcessorClass:
                     #     relativePosition["participant5"], relativePosition["participant6"], relativeRotation["participant5"], relativeRotation["participant6"] = np.zeros(3), np.zeros(3), np.array([0, 0, 0, 1]), np.array([0, 0, 0, 1])
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    relativePosition_for_difference = relativePosition
-                    for i in [3, 4]:
-                        relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
-                    average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
-                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
-                    self.frameRate = 200
-                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                    # relativePosition_for_difference = relativePosition
+                    # for i in [3, 4]:
+                    #     relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
+                    # average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
+                    # self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    # self.frameRate = 200
+                    # data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                    #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
                     # ratio = average_diff/self.differenceLimit
