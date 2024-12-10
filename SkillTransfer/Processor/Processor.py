@@ -24,7 +24,7 @@ from Robot.CAMotion import CAMotion
 from Robot.xArmTransform import xArmTransform
 from xarm.wrapper import XArmAPI
 from Participant.lstm_predictor import LSTMPredictor
-from Filter.Filter import Filter
+from Filter.Filter import MotionFilter
 from scipy.signal import butter, filtfilt
 
 # ---------- Settings: Input mode ---------- #
@@ -133,7 +133,7 @@ class ProcessorClass:
         dataRecordManager = DataRecordManager(participantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
-        filter = Filter(buffer_size=30, cutoff=5., fs=200.0)
+        filter = MotionFilter(buffer_size=30, cutoff=5.0, fs=200.0)
 
         # ----- Load recorded data. ----- #
         for i in [3, 4]:
