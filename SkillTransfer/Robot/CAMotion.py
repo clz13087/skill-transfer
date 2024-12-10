@@ -5,6 +5,7 @@ import quaternion
 import scipy.spatial.transform as scitransform
 from Filter.Filter import MotionFilter
 from scipy.spatial.transform import Rotation as R, Slerp
+from scipy.signal import butter, filtfilt
 
 """
 ##### IMPORTANT #####
@@ -665,3 +666,21 @@ class CAMotion:
         capped_right_diff = min(right_diff, self.differenceLimit)
 
         return capped_average_diff, capped_left_diff, capped_right_diff
+
+    def apply_butterworth_filter(self, data, cutoff, fs, order=4):
+        """
+        Apply Butterworth filter to the input data.
+        
+        Parameters:
+            data (array-like): Input data to filter.
+            cutoff (float): Cutoff frequency in Hz.
+            fs (float): Sampling frequency in Hz.
+            order (int): Order of the Butterworth filter.
+            
+        Returns:
+            np.ndarray: Filtered data.
+        """
+        nyquist = 0.5 * fs
+        normal_cutoff = cutoff / nyquist
+        b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        return filtfilt(b, a, data, axis=0)

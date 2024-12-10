@@ -167,6 +167,14 @@ class ProcessorClass:
                         relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
+                    # ----- filter ----- #
+                    fs = self.frameRate
+                    cutoff = 5.0
+                    for key in relativePosition.keys():
+                        relativePosition[key] = caMotion.apply_butterworth_filter(relativePosition[key], cutoff, fs)
+                    for key in relativeRotation.keys():
+                        relativeRotation[key] = caMotion.apply_butterworth_filter(relativeRotation[key], cutoff, fs)
+
                     # ----- lstm ----- #
                     # send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
                     # send_pos_rot.insert(0, time.perf_counter() - taskStartTime)
