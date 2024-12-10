@@ -31,8 +31,8 @@ class xArmTransform:
         self.beforefilt = [[0, 0, 0, 0, 0, 0]] * self.n
         self.afterfilt = [[0, 0, 0, 0, 0, 0]] * self.n
 
-        self.__initX, self.__initY, self.__initZ = int(initpos[0][1]), int(initpos[0][2]), int(initpos[0][3])
-        self.__initRoll, self.__initPitch, self.__initYaw = int(initrot[0][1]), int(initrot[0][2]), int(initrot[0][3])
+        self.__initX, self.__initY, self.__initZ = float(initpos[0][1]), float(initpos[0][2]), float(initpos[0][3])
+        self.__initRoll, self.__initPitch, self.__initYaw = float(initrot[0][1]), float(initrot[0][2]), float(initrot[0][3])
         self.__initAngleList = initangle
 
     def GetInitialTransform(self):

@@ -133,7 +133,7 @@ class ProcessorClass:
         dataRecordManager = DataRecordManager(participantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         lstmPredictor = LSTMPredictor(self.lstmClientAddress, self.lstmClientPort, self.lstmServerAddress, self.lstmServerPort)
-        filter = MotionFilter(buffer_size=30, cutoff=5.0, fs=200.0)
+        # filter = MotionFilter(buffer_size=30, cutoff=99.0, fs=200.0)
 
         # ----- Load recorded data. ----- #
         for i in [3, 4]:
@@ -171,8 +171,8 @@ class ProcessorClass:
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
                     # ----- filter ----- #
-                    relativePosition = filter.apply_butterworth_filter(relativePosition, mode='position')
-                    relativeRotation = filter.apply_butterworth_filter(relativeRotation, mode='rotation')
+                    # relativePosition = filter.apply_butterworth_filter(relativePosition, mode='position')
+                    # relativeRotation = filter.apply_butterworth_filter(relativeRotation, mode='rotation')
 
                     # ----- lstm ----- #
                     # send_pos_rot = [value for array in [relativePosition["participant1"], relativePosition["participant2"], relativeRotation["participant1"],  relativeRotation["participant2"]] for value in array]
