@@ -29,7 +29,7 @@ idList,5,6
 
 differenceLimit,0.1
 
-recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
+recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\11
 
-weightListPos,1,1,0,0,0,0
-weightListRot,1,1,0,0,0,0
+weightListPos,0,0,1,1,0,0
+weightListRot,0,0,1,1,0,0
