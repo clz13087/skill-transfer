@@ -281,7 +281,7 @@ class ProcessorClass:
                 plt.ylim(0, 1)
                 if self.isExportData:
                     plt.savefig(self.dirPath + "/" + "ratio.png")
-                # plt.show()
+                plt.show()
 
         except:
             print("----- Exception has occurred -----")

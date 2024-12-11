@@ -79,8 +79,8 @@ class CAMotion:
         # ----- change cordinate from motive to xArm ----- #
         order_pos = [2, 1, 0]
         order_rot = [2, 1, 0, 3]
-        self.reorder_and_negate(position, order_pos, 2, [1, 2])
-        self.reorder_and_negate(rotation, order_rot, 2, [1, 2])
+        position = self.reorder_and_negate(position, order_pos, 4, [1, 2])
+        rotation = self.reorder_and_negate(rotation, order_rot, 2, [1, 2])
 
         for i in range(4):
             # ----- position ----- #
@@ -650,8 +650,11 @@ class CAMotion:
             
             # Apply negation based on i (even/odd)
             data[key][negate_idx[i % 2]] = -1 * data[key][negate_idx[i % 2]]
+        return data
 
     def calculate_difference(self, participant_positions):
+        # order_pos = [2, 1, 0]
+        # participant_positions = self.reorder_and_negate(participant_positions, order_pos, 2, [1, 2])
         learner_left = np.array(participant_positions["participant1"])
         learner_right = np.array(participant_positions["participant2"])
         expert_left = np.array(participant_positions["participant3"])

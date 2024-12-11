@@ -43,17 +43,4 @@ weightListPos,1,1,0,0,0,0
 weightListRot,1,1,0,0,0,0
 
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\si2024\tsugumi2\8
-
-Traceback (most recent call last):
-  File "c:\Users\SANOLAB\Documents\GitHub\skill-transfer\SkillTransfer\Processor\Processor.py", line 174, in mainloop
-    relativePosition[key] = caMotion.apply_butterworth_filter(relativePosition[key], cutoff, fs)
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "c:\Users\SANOLAB\Documents\GitHub\skill-transfer\SkillTransfer\Robot\CAMotion.py", line 686, in apply_butterworth_filter
-    return filtfilt(b, a, data, axis=0)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "c:\Users\SANOLAB\Documents\GitHub\skill-transfer\.venv\Lib\site-packages\scipy\signal\_signaltools.py", line 4171, in filtfilt
-    edge, ext = _validate_pad(padtype, padlen, x, axis,
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "c:\Users\SANOLAB\Documents\GitHub\skill-transfer\.venv\Lib\site-packages\scipy\signal\_signaltools.py", line 4221, in _validate_pad
-    raise ValueError("The length of the input vector x must be greater "
-ValueError: The length of the input vector x must be greater than padlen, which is 15.
+recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\2
