@@ -185,20 +185,27 @@ class ProcessorClass:
 
                     # ----- Difference calculation and transmission to transparent ----- #
                     relativePosition_for_difference = relativePosition
-                    for i in [3, 4]:
-                        relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
+                    # for i in [3, 4]:
+                    #     relativePosition_for_difference[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount + int(self.frameRate * 0.3), len(globals()[f"participant{i}_data"]) - 1)]["position"]) #lstmの予測秒数に合わせて，記録も予測秒数分先を用いる
                     average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition_for_difference)
-                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
-                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                    # average_diff, left_diff, right_diff = participantMotion.calculate_difference(relativePosition)
+                    # self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
+                    # self.frameRate = 200
+                    # data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                    #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
                     ratio = average_diff/self.differenceLimit
-                    ratiolist.append(ratio)
-                    timelist.append(time.perf_counter() - taskStartTime)
-                    weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
+                    # ratio = 2*self.loopCount/10000
+                    # ratiolist.append(ratio)
+                    # timelist.append(time.perf_counter() - taskStartTime)
+                    if self.loopCount < 2000:
+                        weightList = [[1,1,0,0,0,0], [1,1,0,0,0,0]]
+                    else:
+                        weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
+                    # weightList = [[0, 0, 1, 1, 0, 0],[1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     print(weightList)
 
                     # ----- Calculate the integration ----- #

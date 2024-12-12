@@ -164,3 +164,32 @@ class ParticipantMotion:
         dictGripperValue["gripperValue2"] = get_gripperValue_2_filt
 
         return dictGripperValue, dictbendingVal
+
+    def calculate_difference(self, participant_positions):
+        self.differenceLimit = 0.1
+        order_pos = [2, 1, 0]
+        participant_positions = self.reorder_and_negate(participant_positions, order_pos, 2, [1, 2])
+        learner_left = np.array(participant_positions["participant1"])
+        learner_right = np.array(participant_positions["participant2"])
+        expert_left = np.array(participant_positions["participant3"])
+        expert_right = np.array(participant_positions["participant4"])
+
+        left_diff = np.linalg.norm(learner_left - expert_left)
+        right_diff = np.linalg.norm(learner_right - expert_right)
+        average_diff = (left_diff + right_diff) / 2
+
+        capped_average_diff = min(average_diff, self.differenceLimit)
+        capped_left_diff = min(left_diff, self.differenceLimit)
+        capped_right_diff = min(right_diff, self.differenceLimit)
+
+        return capped_average_diff, capped_left_diff, capped_right_diff
+    
+    def reorder_and_negate(self, data, order, n_keys, negate_idx):
+        keys_list = list(data.keys())
+        for i in range(n_keys):
+            key = keys_list[i]
+            data[key] = [data[key][j] for j in order]
+            
+            # Apply negation based on i (even/odd)
+            data[key][negate_idx[i % 2]] = -1 * data[key][negate_idx[i % 2]]
+        return data
