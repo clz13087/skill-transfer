@@ -29,7 +29,7 @@ idList,5,6
 
 differenceLimit,0.1
 
-recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\2
+recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\expert_for_master
 
-weightListPos,1,1,0,0,0,0
-weightListRot,1,1,0,0,0,0
+weightListPos,0,0,1,1,0,0
+weightListRot,0,0,1,1,0,0

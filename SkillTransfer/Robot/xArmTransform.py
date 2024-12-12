@@ -46,10 +46,6 @@ class xArmTransform:
         return self.__initAngleList
     
     def Transform(self, relativepos: list, relativerot: list, isLimit=True, isOnlyPosition=False):
-        """
-        Converts from motive coordinate to xarm coordinate and limits values.
-        """
-
         relativepos_mm = relativepos * 1000
         x, y, z = relativepos_mm[0] + self.__initX, relativepos_mm[1] + self.__initY, relativepos_mm[2] + self.__initZ
         roll, pitch, yaw = relativerot[0] + self.__initRoll, relativerot[1] + self.__initPitch, relativerot[2] + self.__initYaw

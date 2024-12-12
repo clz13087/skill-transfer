@@ -75,16 +75,16 @@ class CAMotion:
         self.get_rot_2_box = [[0]] * n
         self.get_rot_2_filt_box = [[0]] * n
 
-    def participant2robot_all_quaternion(self, position: dict, rotation: dict, weight: list):
+    def participant2robot_all_quaternion(self, motive_position: dict, motive_rotation: dict, weight: list):
         # ----- change cordinate from motive to xArm ----- #
         order_pos = [2, 1, 0]
         order_rot = [2, 1, 0, 3]
-        position = self.reorder_and_negate(position, order_pos, 2, [1, 2])
-        rotation = self.reorder_and_negate(rotation, order_rot, 2, [1, 2])
+        xarm_position = self.motive2xarm(motive_position, order_pos, 4, [1, 2])
+        xarm_rotation = self.motive2xarm(motive_rotation, order_rot, 4, [1, 2])
 
         for i in range(4):
             # ----- position ----- #
-            weightedDiffPos = (np.array(position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])) * weight[0][i]
+            weightedDiffPos = (np.array(xarm_position["participant" + str(i + 1)]) - np.array(self.beforePositions["participant" + str(i + 1)])) * weight[0][i]
 
             if i % 2 == 0:
                 sharedPosition_left = self.beforePositionsRobot["robot1"] + weightedDiffPos
@@ -93,10 +93,10 @@ class CAMotion:
                 sharedPosition_right = self.beforePositionsRobot["robot2"] + weightedDiffPos
                 self.beforePositionsRobot["robot2"] = sharedPosition_right
 
-            self.beforePositions["participant" + str(i + 1)] = position["participant" + str(i + 1)]
+            self.beforePositions["participant" + str(i + 1)] = xarm_position["participant" + str(i + 1)]
 
             # ----- rotation ----- #
-            slerpRot = self.weighted_slerp(self.beforeRotations["participant" + str(i + 1)], rotation["participant" + str(i + 1)], weight[1][i])
+            slerpRot = self.weighted_slerp(self.beforeRotations["participant" + str(i + 1)], xarm_rotation["participant" + str(i + 1)], weight[1][i])
             qw, qx, qy, qz = self.beforeRotations["participant" + str(i + 1)][3], self.beforeRotations["participant" + str(i + 1)][0], self.beforeRotations["participant" + str(i + 1)][1], self.beforeRotations["participant" + str(i + 1)][2]
             mat4x4 = np.array([
                     [qw, qz, -qy, qx],
@@ -112,7 +112,7 @@ class CAMotion:
                 sharedRotation_quaternion_right = (R.from_quat(weightedDiffRot) * R.from_quat(self.beforeRotationsRobot["robot2"])).as_quat()
                 self.beforeRotationsRobot["robot2"] = sharedRotation_quaternion_right
 
-            self.beforeRotations["participant" + str(i + 1)] = rotation["participant" + str(i + 1)]
+            self.beforeRotations["participant" + str(i + 1)] = xarm_rotation["participant" + str(i + 1)]
             
         sharedRotation_euler_left = self.Quaternion2Euler(sharedRotation_quaternion_left)
         sharedRotation_euler_right = self.Quaternion2Euler(sharedRotation_quaternion_right)
@@ -642,19 +642,18 @@ class CAMotion:
         
         return weightedRot
 
-    def reorder_and_negate(self, data, order, n_keys, negate_idx):
-        keys_list = list(data.keys())
+    def motive2xarm(self, data, order, n_keys, negate_idx):
+        data_copy = data.copy()
+        keys_list = list(data_copy.keys())
         for i in range(n_keys):
             key = keys_list[i]
-            data[key] = [data[key][j] for j in order]
+            data_copy[key] = [data_copy[key][j] for j in order]
             
             # Apply negation based on i (even/odd)
-            data[key][negate_idx[i % 2]] = -1 * data[key][negate_idx[i % 2]]
-        return data
+            data_copy[key][negate_idx[i % 2]] = -1 * data_copy[key][negate_idx[i % 2]]
+        return data_copy
 
     def calculate_difference(self, participant_positions):
-        order_pos = [2, 1, 0]
-        participant_positions = self.reorder_and_negate(participant_positions, order_pos, 2, [1, 2])
         learner_left = np.array(participant_positions["participant1"])
         learner_right = np.array(participant_positions["participant2"])
         expert_left = np.array(participant_positions["participant3"])
