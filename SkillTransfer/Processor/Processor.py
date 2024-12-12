@@ -175,16 +175,16 @@ class ProcessorClass:
                     # relativeRotation = filter.apply_butterworth_filter(relativeRotation, mode='rotation')
 
                     # ----- Difference calculation and transmission to transparent ----- #
-                    # average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition)
-                    # self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 100)
-                    # data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                    #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                    average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition)
+                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 50)
+                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
-                    # ratio = average_diff/self.differenceLimit
-                    # ratiolist.append(ratio)
-                    # timelist.append(time.perf_counter() - taskStartTime)
+                    ratio = average_diff/self.differenceLimit
+                    ratiolist.append(ratio)
+                    timelist.append(time.perf_counter() - taskStartTime)
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
                     # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
                     print(weightList)
@@ -227,7 +227,7 @@ class ProcessorClass:
                     # ----- Start streaming ----- #
                     elif keycode == "s":
                         # ----- A beep sounds after 5 seconds and send s-key to the Mac side ----- #
-                        time.sleep(2)
+                        time.sleep(5)
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
                             sock.sendto(b's', ('133.68.108.26', 8000))
                         winsound.Beep(1000,1000)

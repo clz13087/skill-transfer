@@ -1,10 +1,10 @@
 xArmIPAddress_left,192.168.1.199
-initialpos_left,580,210,-21
+initialpos_left,575,225,-21
 initialrot_left,-90,0,-40.8
 initAngleList_left,-56.9,54.3,20.1,51.6,82.2,73.8,-88.7
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,600,-200,-21
+initialpos_right,600,-205,-21
 initialrot_right,90,0,42.9
 initAngleList_right,60.7,63.1,-24.6,51.6,-85.2,67,97.5
 
@@ -29,7 +29,7 @@ idList,5,6
 
 differenceLimit,0.1
 
-recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\expert_for_master
+recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\for_master
 
-weightListPos,0,0,1,1,0,0
-weightListRot,0,0,1,1,0,0
+weightListPos,1,1,0,0,0,0
+weightListRot,1,1,0,0,0,0
