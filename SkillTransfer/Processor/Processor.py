@@ -196,8 +196,8 @@ class ProcessorClass:
                     #     sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
-                    ratio = average_diff/self.differenceLimit
-                    # ratio = 2*self.loopCount/10000
+                    # ratio = average_diff/self.differenceLimit
+                    ratio = 2*self.loopCount/10000
                     # ratiolist.append(ratio)
                     # timelist.append(time.perf_counter() - taskStartTime)
                     if self.loopCount < 2000:
