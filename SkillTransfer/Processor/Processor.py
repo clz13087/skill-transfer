@@ -182,12 +182,13 @@ class ProcessorClass:
                         sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
                     # ----- Control ratio varies depending on the deference. ----- #
-                    ratio = average_diff/self.differenceLimit
-                    ratiolist.append(ratio)
+                    ratio_left = left_diff/self.differenceLimit
+                    ratio_right = right_diff/self.differenceLimit
+                    ratio_average = average_diff/self.differenceLimit
+                    ratiolist.append(ratio_average)
                     timelist.append(time.perf_counter() - taskStartTime)
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [1-ratio, 1-ratio, ratio, ratio, 0, 0]]
-                    # weightList = [[1-ratio, 1-ratio, ratio, ratio, 0, 0], [0, 0, 1, 1, 0, 0]]
-                    print(weightList)
+                    weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right, 0, 0], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right, 0, 0]]
+                    # weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right, 0, 0], [0, 0, 1, 1, 0, 0]]
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
