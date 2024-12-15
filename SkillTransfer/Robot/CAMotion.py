@@ -75,7 +75,7 @@ class CAMotion:
         self.get_rot_2_box = [[0]] * n
         self.get_rot_2_filt_box = [[0]] * n
 
-    def participant2robot_all_quaternion(self, motive_position: dict, motive_rotation: dict, weight: list):
+    def participant2robot(self, motive_position: dict, motive_rotation: dict, weight: list):
         # ----- change cordinate from motive to xArm ----- #
         order_pos = [2, 1, 0]
         order_rot = [2, 1, 0, 3]
@@ -668,21 +668,3 @@ class CAMotion:
         capped_right_diff = min(right_diff, self.differenceLimit)
 
         return capped_average_diff, capped_left_diff, capped_right_diff
-
-    def apply_butterworth_filter(self, data, cutoff, fs, order=4):
-        """
-        Apply Butterworth filter to the input data.
-        
-        Parameters:
-            data (array-like): Input data to filter.
-            cutoff (float): Cutoff frequency in Hz.
-            fs (float): Sampling frequency in Hz.
-            order (int): Order of the Butterworth filter.
-            
-        Returns:
-            np.ndarray: Filtered data.
-        """
-        nyquist = 0.5 * fs
-        normal_cutoff = cutoff / nyquist
-        b, a = butter(order, normal_cutoff, btype='low', analog=False)
-        return filtfilt(b, a, data, axis=0)

@@ -131,7 +131,7 @@ class ProcessorClass:
         caMotion = CAMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, initangle=self.initAngleList_left)
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, initangle=self.initAngleList_right)
-        dataRecordManager = DataRecordManager(participantNum=2, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
+        dataRecordManager = DataRecordManager(participantNum=4, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
         # filter = MotionFilter(buffer_size=30, cutoff=1.0, fs=200.0)
 
@@ -187,11 +187,11 @@ class ProcessorClass:
                     ratio_average = average_diff/self.differenceLimit
                     ratiolist.append(ratio_average)
                     timelist.append(time.perf_counter() - taskStartTime)
-                    weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right, 0, 0], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right, 0, 0]]
-                    # weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right, 0, 0], [0, 0, 1, 1, 0, 0]]
+                    weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
+                    # weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [0, 0, 1, 1]]
 
                     # ----- Calculate the integration ----- #
-                    robotpos, robotrot = caMotion.participant2robot_all_quaternion(relativePosition, relativeRotation, weightList)
+                    robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
                 
                     # ----- Send to xArm ----- #
                     if isEnablexArm:

@@ -31,5 +31,5 @@ differenceLimit,0.1
 
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\for_master
 
-weightListPos,1,1,0,0,0,0
-weightListRot,1,1,0,0,0,0
+weightListPos,1,1,0,0
+weightListRot,1,1,0,0
