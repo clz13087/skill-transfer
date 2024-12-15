@@ -76,6 +76,8 @@ class ProcessorClass:
 
         weightListPos = [addr for addr in dat if "weightListPos" in addr[0]]
         weightListRot = [addr for addr in dat if "weightListRot" in addr[0]]
+        practicemode = [addr for addr in dat if "practicemode" in addr[0]][0][1]
+        recordNum = [addr for addr in dat if "recordNum" in addr[0]][0][1]
 
         self.xArmIpAddress_left = xArmIP_left
         self.initialpos_left = initialpos_left
@@ -114,6 +116,9 @@ class ProcessorClass:
         self.weightListPos = weightListPos
         self.weightListRot = weightListRot
 
+        self.practicemode = int(practicemode)
+        self.recordNum = int(recordNum)
+
     def mainloop(self, isEnablexArm: bool = True):
         """
         Send the position and rotation to the xArm
@@ -131,9 +136,8 @@ class ProcessorClass:
         caMotion = CAMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum,differenceLimit=self.differenceLimit)
         transform_left = xArmTransform(initpos=self.initialpos_left, initrot=self.initislrot_left, initangle=self.initAngleList_left)
         transform_right = xArmTransform(initpos=self.initialpos_right, initrot=self.initislrot_right, initangle=self.initAngleList_right)
-        dataRecordManager = DataRecordManager(participantNum=4, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
+        dataRecordManager = DataRecordManager(participantNum=self.recordNum, otherRigidBodyNum=self.otherRigidBodyNum, bendingSensorNum=self.gripperNum, robotNum=self.robotNum)
         participantMotion = ParticipantMotion(defaultParticipantNum=self.participantNum, otherRigidBodyNum=self.otherRigidBodyNum, motionInputSystem=motionDataInputMode, mocapServer=self.motiveserverIpAddress, mocapLocal=self.motivelocalIpAddress, idList=self.idList)
-        # filter = MotionFilter(buffer_size=30, cutoff=1.0, fs=200.0)
 
         # ----- Load recorded data. ----- #
         for i in [3, 4]:
@@ -170,25 +174,26 @@ class ProcessorClass:
                         relativePosition[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["position"])
                         relativeRotation[f"participant{i}"] = np.array(globals()[f"participant{i}_data"][min(self.loopCount, len(globals()[f"participant{i}_data"]) - 1)]["rotation"])
 
-                    # ----- filter ----- #
-                    # relativePosition = filter.apply_butterworth_filter(relativePosition, mode='position')
-                    # relativeRotation = filter.apply_butterworth_filter(relativeRotation, mode='rotation')
+                    # ----- before or practice or after ----- #
+                    if self.practicemode == 1 or self.practicemode == 2:
+                        # ----- Difference calculation and transmission to transparent ----- #
+                        average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition)
+                        self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 50)
+                        data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
+                        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                            sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
 
-                    # ----- Difference calculation and transmission to transparent ----- #
-                    average_diff, left_diff, right_diff = caMotion.calculate_difference(relativePosition)
-                    self.frameRate = 200 - (average_diff / self.differenceLimit) * (200 - 50)
-                    data_to_send = {"frameRate": self.frameRate, "average_diff": average_diff, "left_diff": left_diff, "right_diff": right_diff}
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                        sock.sendto(json.dumps(data_to_send).encode(), ('133.68.108.26', 8000))
+                        # ----- Control ratio varies depending on the deference. ----- #
+                        ratio_left = left_diff/self.differenceLimit
+                        ratio_right = right_diff/self.differenceLimit
+                        ratio_average = average_diff/self.differenceLimit
+                        ratiolist.append(ratio_average)
+                        timelist.append(time.perf_counter() - taskStartTime)
+                        print("imitation")
 
-                    # ----- Control ratio varies depending on the deference. ----- #
-                    ratio_left = left_diff/self.differenceLimit
-                    ratio_right = right_diff/self.differenceLimit
-                    ratio_average = average_diff/self.differenceLimit
-                    ratiolist.append(ratio_average)
-                    timelist.append(time.perf_counter() - taskStartTime)
-                    weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
-                    # weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [0, 0, 1, 1]]
+                        if self.practicemode == 1:
+                            weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
+                            print(weightList)
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)

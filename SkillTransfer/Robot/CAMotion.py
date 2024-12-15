@@ -661,10 +661,9 @@ class CAMotion:
 
         left_diff = np.linalg.norm(learner_left - expert_left)
         right_diff = np.linalg.norm(learner_right - expert_right)
-        average_diff = (left_diff + right_diff) / 2
 
-        capped_average_diff = min(average_diff, self.differenceLimit)
         capped_left_diff = min(left_diff, self.differenceLimit)
         capped_right_diff = min(right_diff, self.differenceLimit)
+        capped_average_diff = (capped_left_diff + capped_right_diff) / 2
 
         return capped_average_diff, capped_left_diff, capped_right_diff
