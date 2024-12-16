@@ -168,6 +168,7 @@ class ProcessorClass:
                     localRotation = participantMotion.LocalRotation(loopCount=self.loopCount)
                     relativePosition = caMotion.GetRelativePosition(position=localPosition)
                     relativeRotation = caMotion.GetRelativeRotation(rotation=localRotation)
+                    print(localPosition, localRotation)
 
                     # ----- record ----- #
                     for i in [3, 4]:
@@ -189,11 +190,9 @@ class ProcessorClass:
                         ratio_average = average_diff/self.differenceLimit
                         ratiolist.append(ratio_average)
                         timelist.append(time.perf_counter() - taskStartTime)
-                        print("imitation")
 
                         if self.practicemode == 1:
                             weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
-                            print(weightList)
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
