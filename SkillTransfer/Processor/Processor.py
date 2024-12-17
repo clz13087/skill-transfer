@@ -274,6 +274,8 @@ class ProcessorClass:
 
             windll.winmm.timeEndPeriod(1)
 
+            winsound.Beep(1000,1000)
+
             if self.loopCount > 100:
                 plt.plot(timelist, ratiolist, linestyle='-')
                 plt.xlabel('Time')
