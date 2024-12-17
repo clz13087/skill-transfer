@@ -31,8 +31,8 @@ differenceLimit,0.1
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\for_master
 
 
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\name\practice\
-weightListPos,1,1,0,0
-weightListRot,1,1,0,0
-practicemode,1
-recordNum,4
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\imitation\yoshino\after\3
+weightListPos,0,0,0,0
+weightListRot,0,0,0,0
+practicemode,0
+recordNum,2
