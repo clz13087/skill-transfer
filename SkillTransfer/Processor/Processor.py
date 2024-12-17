@@ -193,6 +193,9 @@ class ProcessorClass:
 
                         if self.practicemode == 1:
                             weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
+                            
+                        if self.loopCount >  len(globals()[f"participant3_data"]):
+                            raise KeyboardInterrupt
 
                     # ----- Calculate the integration ----- #
                     robotpos, robotrot = caMotion.participant2robot(relativePosition, relativeRotation, weightList)
