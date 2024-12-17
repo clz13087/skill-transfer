@@ -190,9 +190,7 @@ class ProcessorClass:
                         ratio_average = average_diff/self.differenceLimit
                         ratiolist.append(ratio_average)
                         timelist.append(time.perf_counter() - taskStartTime)
-
-                        if self.practicemode == 1:
-                            weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
+                        weightList = [[1-ratio_left, 1-ratio_right, ratio_left, ratio_right], [1-ratio_left, 1-ratio_right, ratio_left, ratio_right]]
                             
                         if self.loopCount >  len(globals()[f"participant3_data"]):
                             raise KeyboardInterrupt
@@ -202,8 +200,9 @@ class ProcessorClass:
                 
                     # ----- Send to xArm ----- #
                     if isEnablexArm:
-                        arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
-                        arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
+                        if self.practicemode == 1:
+                            arm_1.set_servo_cartesian(transform_left.Transform(relativepos=robotpos["robot1"], relativerot=robotrot["robot1"], isLimit=False))
+                            arm_2.set_servo_cartesian(transform_right.Transform(relativepos=robotpos["robot2"], relativerot=robotrot["robot2"], isLimit=False))
 
                     # ----- Data recording ----- #
                     if self.isExportData:
