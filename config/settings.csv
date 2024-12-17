@@ -1,11 +1,11 @@
 xArmIPAddress_left,192.168.1.242
-initialpos_left,600,205,-20
-initialrot_left,-90,-9,-40.2
+initialpos_left,600,205,-10
+initialrot_left,-90,-5,-39.5
 initAngleList_left,-56.9,54.3,20.1,51.6,82.2,73.8,-88.7
 
 xArmIPAddress_right,192.168.1.196
-initialpos_right,625,-190,-20
-initialrot_right,90,3,42.4
+initialpos_right,640,-195,-15
+initialrot_right,90,5,44
 initAngleList_right,60.7,63.1,-24.6,51.6,-85.2,67,97.5
 
 motiveServerIPAddress,133.68.108.111
@@ -19,7 +19,7 @@ lstmClientPort,31110
 lstmServerAddress,133.68.108.66
 lstmServerPort,31111
 
-isExportData,True
+isExportData,False
 participantNum,2
 gripperNum,0
 otherRigidBodyNum,0
@@ -31,7 +31,7 @@ differenceLimit,0.1
 recordedDataPath,C:\Users\SANOLAB\Documents\tsugumi\fujiwara\20241210\for_master
 
 
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\test\practice\1
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\yoshino\practice\
 weightListPos,1,1,0,0
 weightListRot,1,1,0,0
 practicemode,1
