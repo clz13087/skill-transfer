@@ -211,6 +211,11 @@ class ProcessorClass:
                     self.loopCount += 1
                     loop_start_time = time.perf_counter()
 
+                    # ---------- time limit ---------- #
+                    elapsed_time = time.perf_counter() - taskStartTime
+                    if elapsed_time >= 120:
+                        raise KeyboardInterrupt
+
                 else:
                     keycode = input('Input > "q": quit, "r": Clean error and init arm, "s": start control \n')
                     # ----- Quit program ----- #
