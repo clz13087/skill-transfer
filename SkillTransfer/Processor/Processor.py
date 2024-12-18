@@ -264,6 +264,8 @@ class ProcessorClass:
                     sock.sendto(b's', ('133.68.108.26', 8000))
                     print("Send stop to transparent")
 
+                winsound.Beep(1000,1000)
+
             if self.isExportData:
                 dataRecordManager.ExportSelf(dirPath=self.dirPath)
 
@@ -273,8 +275,6 @@ class ProcessorClass:
                 arm_2.disconnect()
 
             windll.winmm.timeEndPeriod(1)
-
-            winsound.Beep(1000,1000)
 
             if self.loopCount > 100:
                 plt.plot(timelist, ratiolist, linestyle='-')
