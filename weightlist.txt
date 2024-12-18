@@ -1,26 +1,26 @@
 # before
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\inoue\before\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\namba\before\
 weightListPos,0,0,0,0
 weightListRot,0,0,0,0
 practicemode,0
 recordNum,2
 
 # practice(imitation)
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\imitation\inoue\practice\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\imitation\namba\practice\
 weightListPos,0,0,0,0
 weightListRot,0,0,0,0
 practicemode,2
 recordNum,4
 
 # practice(body intagration)
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\inoue\practice\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\namba\practice\
 weightListPos,1,1,0,0
 weightListRot,1,1,0,0
 practicemode,1
 recordNum,4
 
 # after
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\inoue\after\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\namba\after\
 weightListPos,0,0,0,0
 weightListRot,0,0,0,0
 practicemode,0
