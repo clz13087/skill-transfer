@@ -1,26 +1,26 @@
 # before
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\kajio\before\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\shinagawa\before\
 weightListPos,0,0,0,0
 weightListRot,0,0,0,0
 practicemode,0
 recordNum,2
 
 # practice(imitation)
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\imitation\kajio\practice\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\imitation\shinagawa\practice\
 weightListPos,0,0,0,0
 weightListRot,0,0,0,0
 practicemode,2
 recordNum,4
 
 # practice(body integration)
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\kajio\practice\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\shinagawa\practice\
 weightListPos,1,1,0,0
 weightListRot,1,1,0,0
 practicemode,1
 recordNum,4
 
 # after
-dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\kajio\after\
+dirPath,C:\Users\SANOLAB\Documents\tsugumi\mastermocap\body integration\shinagawa\after\
 weightListPos,0,0,0,0
 weightListRot,0,0,0,0
 practicemode,0
